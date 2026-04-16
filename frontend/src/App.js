@@ -13,6 +13,7 @@ import Timesheets from './pages/Timesheets';
 import Companies from './pages/Companies';
 import Analytics from './pages/Analytics';
 import LeaveApprovals from './pages/LeaveApprovals';
+import TimesheetApprovals from './pages/TimesheetApprovals';
 
 function App() {
   return (
@@ -31,8 +32,8 @@ function App() {
           <Route path="/employees" element={<Layout><Employees /></Layout>} />
           <Route path="/attendance-reports" element={<Layout><AttendanceReports /></Layout>} />
           <Route path="/leave-reports" element={<Layout><LeaveReports /></Layout>} />
-          <Route path="/approvals/leaves" element={<Layout><Dashboard /></Layout>} />
-          <Route path="/approvals/timesheets" element={<Layout><Dashboard /></Layout>} />
+          <Route path="/approvals/leaves" element={<Layout><LeaveApprovals /></Layout>} />
+          <Route path="/approvals/timesheets" element={<Layout><TimesheetApprovals /></Layout>} />
           <Route path="/timesheets" element={<Layout><Timesheets /></Layout>} />
           
           <Route path="/" element={<Navigate to="/dashboard" />} />

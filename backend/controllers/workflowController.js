@@ -33,8 +33,13 @@ exports.applyLeave = async (req, res) => {
 
 exports.getPendingLeaves = async (req, res) => {
   try {
+    const { status } = req.query; // Add support for status filter
+    const whereClause = { managerId: req.user.id };
+    if (status) {
+        whereClause.status = status;
+    }
     const leaves = await Leave.findAll({
-      where: { managerId: req.user.id },
+      where: whereClause,
       include: [{ model: User, attributes: ['name', 'email', 'department'] }],
       order: [['createdAt', 'DESC']]
     });
@@ -47,11 +52,14 @@ exports.getPendingLeaves = async (req, res) => {
 exports.updateLeaveStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, managerComment } = req.body;
     const leave = await Leave.findOne({ where: { id, managerId: req.user.id } });
     if (!leave) return res.status(404).json({ error: 'Leave request not found' });
 
     leave.status = status;
+    if (managerComment !== undefined) {
+      leave.managerComment = managerComment;
+    }
     await leave.save();
     res.json(leave);
   } catch (error) {
@@ -96,9 +104,15 @@ exports.submitTimesheet = async (req, res) => {
 
 exports.getPendingTimesheets = async (req, res) => {
   try {
+    const { status } = req.query; // Add support for status filter
+    const whereClause = { managerId: req.user.id };
+    if (status) {
+        whereClause.status = status;
+    }
     const timesheets = await Timesheet.findAll({
-      where: { managerId: req.user.id, status: 'pending' },
-      include: [{ model: User, attributes: ['name', 'department'] }]
+      where: whereClause,
+      include: [{ model: User, attributes: ['name', 'department'] }],
+      order: [['createdAt', 'DESC']]
     });
     res.json(timesheets);
   } catch (error) {
@@ -109,11 +123,14 @@ exports.getPendingTimesheets = async (req, res) => {
 exports.updateTimesheetStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, managerComment } = req.body;
     const timesheet = await Timesheet.findOne({ where: { id, managerId: req.user.id } });
     if (!timesheet) return res.status(404).json({ error: 'Timesheet not found' });
 
     timesheet.status = status;
+    if (managerComment !== undefined) {
+      timesheet.managerComment = managerComment;
+    }
     await timesheet.save();
     res.json(timesheet);
   } catch (error) {

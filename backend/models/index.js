@@ -51,7 +51,8 @@ const Leave = sequelize.define('Leave', {
   status: { 
     type: DataTypes.ENUM('pending', 'approved', 'rejected'), 
     defaultValue: 'pending' 
-  }
+  },
+  managerComment: { type: DataTypes.TEXT }
 });
 
 const Timesheet = sequelize.define('Timesheet', {
@@ -67,7 +68,8 @@ const Timesheet = sequelize.define('Timesheet', {
   status: { 
     type: DataTypes.ENUM('pending', 'approved', 'rejected'), 
     defaultValue: 'pending' 
-  }
+  },
+  managerComment: { type: DataTypes.TEXT }
 });
 
 // Associations

@@ -297,7 +297,12 @@ const Timesheets = () => {
                     <div style={{ fontWeight: 800, color: '#4f46e5', fontSize: '0.9rem' }}>{t.totalHours}h</div>
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem' }}>{t.description || 'General Work'}</div>
-                  <div style={{ marginTop: '0.4rem' }}>
+                  {t.managerComment && (
+                    <div style={{ fontSize: '0.75rem', color: '#334155', fontWeight: 600, marginTop: '0.4rem', background: 'white', padding: '0.4rem 0.6rem', borderRadius: '6px', borderLeft: '2px solid #cbd5e1' }}>
+                      Manager: "{t.managerComment}"
+                    </div>
+                  )}
+                  <div style={{ marginTop: '0.5rem' }}>
                     <span style={{
                       fontSize: '0.68rem', fontWeight: 700,
                       color: statusColor[t.status], background: `${statusColor[t.status]}20`,

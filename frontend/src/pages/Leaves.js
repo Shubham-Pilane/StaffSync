@@ -225,6 +225,11 @@ const Leaves = () => {
                           "{leave.reason}"
                         </p>
                       )}
+                      {leave.managerComment && (
+                        <p style={{ color: '#334155', fontSize: '0.8rem', fontWeight: 600, marginTop: '0.4rem', background: '#f8fafc', padding: '0.5rem 0.75rem', borderRadius: '8px', borderLeft: '3px solid #94a3b8', display: 'flex', gap: '0.5rem' }}>
+                          <span style={{color: '#94a3b8'}}>Manager:</span> "{leave.managerComment}"
+                        </p>
+                      )}
                     </div>
 
                     {/* Status badge */}

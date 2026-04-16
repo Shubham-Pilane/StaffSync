@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, XCircle, AlertCircle, Calendar, Clock, User, Filter } from 'lucide-react';
+import { CheckCircle, XCircle, AlertCircle, Calendar, Clock, User, Filter, FileText } from 'lucide-react';
 import api from '../services/api';
 import Toast from '../components/Toast';
 
@@ -9,38 +9,32 @@ const statusConfig = {
   rejected: { label: 'Rejected', color: '#ef4444', bg: '#fee2e2', icon: XCircle },
 };
 
-const typeColors = {
-  Annual:  { color: '#f59e0b', bg: '#fef3c7' },
-  Sick:    { color: '#ef4444', bg: '#fee2e2' },
-  Casual:  { color: '#8b5cf6', bg: '#ede9fe' },
-};
-
-const LeaveApprovals = () => {
-  const [leaves, setLeaves]             = useState([]);
-  const [filter, setFilter]             = useState('pending');
+const TimesheetApprovals = () => {
+  const [timesheets, setTimesheets] = useState([]);
+  const [filter, setFilter] = useState('pending');
   const [notification, setNotification] = useState(null);
-  const [loading, setLoading]           = useState({});
-  const [comments, setComments]         = useState({});
+  const [loading, setLoading] = useState({});
+  const [comments, setComments] = useState({});
 
-  const fetchLeaves = async () => {
+  const fetchTimesheets = async () => {
     try {
-      const res = await api.get('/leaves/pending'); // now this returns ALL because we aren't passing ?status=pending
-      setLeaves(res.data);
+      const res = await api.get('/timesheets/pending');
+      setTimesheets(res.data);
     } catch (err) { console.error(err); }
   };
 
-  useEffect(() => { fetchLeaves(); }, []);
+  useEffect(() => { fetchTimesheets(); }, []);
 
   const handleAction = async (id, status) => {
     const comment = comments[id] || '';
 
     setLoading(prev => ({ ...prev, [id]: true }));
     try {
-      await api.patch(`/leaves/${id}`, { status, managerComment: comment });
-      fetchLeaves();
+      await api.patch(`/timesheets/${id}`, { status, managerComment: comment });
+      fetchTimesheets();
       setComments(prev => ({ ...prev, [id]: '' }));
       setNotification({
-        message: `Leave ${status === 'approved' ? 'approved ✓' : 'rejected ✗'} successfully.`,
+        message: `Timesheet ${status === 'approved' ? 'approved ✓' : 'rejected ✗'} successfully.`,
         type: status === 'approved' ? 'success' : 'error'
       });
     } catch (err) {
@@ -50,15 +44,8 @@ const LeaveApprovals = () => {
     }
   };
 
-  const getDuration = (l) => {
-    const start = new Date(l.startDate);
-    const end   = new Date(l.endDate);
-    const days  = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
-    return days === 1 ? '1 day' : `${days} days`;
-  };
-
-  const filtered = filter === 'all' ? leaves : leaves.filter(l => l.status === filter);
-  const pendingCount = leaves.filter(l => l.status === 'pending').length;
+  const filtered = filter === 'all' ? timesheets : timesheets.filter(t => t.status === filter);
+  const pendingCount = timesheets.filter(t => t.status === 'pending').length;
 
   return (
     <div style={{ maxWidth: '900px' }}>
@@ -67,19 +54,19 @@ const LeaveApprovals = () => {
       {/* Header */}
       <div style={{ marginBottom: '2rem' }}>
         <h1 style={{ fontSize: '1.875rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
-          Leave Approvals
+          Timesheet Approvals
         </h1>
         <p style={{ color: '#64748b', marginTop: '0.25rem', fontWeight: 500 }}>
-          Review and act on leave requests from your team members.
+          Review and log billable timesheets submitted by your team.
         </p>
       </div>
 
       {/* Stats row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
         {[
-          { label: 'Awaiting Action', value: leaves.filter(l => l.status === 'pending').length,  color: '#f59e0b' },
-          { label: 'Approved',        value: leaves.filter(l => l.status === 'approved').length, color: '#10b981' },
-          { label: 'Rejected',        value: leaves.filter(l => l.status === 'rejected').length, color: '#ef4444' },
+          { label: 'Awaiting Action', value: timesheets.filter(t => t.status === 'pending').length,  color: '#f59e0b' },
+          { label: 'Approved',        value: timesheets.filter(t => t.status === 'approved').length, color: '#10b981' },
+          { label: 'Rejected',        value: timesheets.filter(t => t.status === 'rejected').length, color: '#ef4444' },
         ].map(s => (
           <div key={s.label} className="card" style={{ padding: '1.25rem 1.5rem', borderLeft: `4px solid ${s.color}` }}>
             <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
@@ -90,11 +77,10 @@ const LeaveApprovals = () => {
 
       {/* Filter + list */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        {/* Card header */}
         <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <Filter size={18} color="#4f46e5" />
-            <span style={{ fontWeight: 800, color: '#1e293b' }}>All Requests</span>
+            <span style={{ fontWeight: 800, color: '#1e293b' }}>All Timesheets</span>
             {pendingCount > 0 && (
               <span style={{ background: '#fef3c7', color: '#d97706', fontSize: '0.72rem', fontWeight: 700, padding: '0.2rem 0.6rem', borderRadius: '100px' }}>
                 {pendingCount} pending
@@ -120,25 +106,23 @@ const LeaveApprovals = () => {
           </div>
         </div>
 
-        {/* Leave request list */}
         <div style={{ padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {filtered.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#94a3b8' }}>
               <CheckCircle size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
               <p style={{ fontWeight: 700, fontSize: '1rem' }}>
-                {filter === 'pending' ? 'No pending requests — all caught up!' : 'No requests found.'}
+                {filter === 'pending' ? 'No pending timesheets — all caught up!' : 'No timesheets found.'}
               </p>
             </div>
-          ) : filtered.map(leave => {
-            const typeInfo = typeColors[leave.type] || typeColors.Annual;
-            const StatusIcon = statusConfig[leave.status]?.icon || AlertCircle;
-            const sColor = statusConfig[leave.status]?.color;
-            const sBg    = statusConfig[leave.status]?.bg;
-            const isPending = leave.status === 'pending';
+          ) : filtered.map(ts => {
+            const StatusIcon = statusConfig[ts.status]?.icon || AlertCircle;
+            const sColor = statusConfig[ts.status]?.color;
+            const sBg    = statusConfig[ts.status]?.bg;
+            const isPending = ts.status === 'pending';
 
             return (
-              <div key={leave.id} style={{
-                display: 'flex', alignItems: 'center', gap: '1.25rem',
+              <div key={ts.id} style={{
+                display: 'flex', alignItems: 'flex-start', gap: '1.25rem',
                 padding: '1.25rem', borderRadius: '16px',
                 border: isPending ? '1px solid #fde68a' : '1px solid #f1f5f9',
                 background: isPending ? '#fffbeb' : 'white',
@@ -147,38 +131,44 @@ const LeaveApprovals = () => {
                 {/* Avatar */}
                 <div style={{
                   width: '46px', height: '46px', borderRadius: '12px', flexShrink: 0,
-                  background: typeInfo.bg, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  background: '#e0e7ff', display: 'flex', alignItems: 'center', justifyContent: 'center'
                 }}>
-                  <User size={22} color={typeInfo.color} />
+                  <User size={22} color="#4f46e5" />
                 </div>
 
                 {/* Details */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.3rem' }}>
                     <span style={{ fontWeight: 800, color: '#1e293b', fontSize: '0.95rem' }}>
-                      {leave.User?.name || 'Employee'}
+                      {ts.User?.name || 'Employee'}
                     </span>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: typeInfo.color, background: typeInfo.bg, padding: '0.15rem 0.6rem', borderRadius: '100px' }}>
-                      {leave.type} Leave
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#4f46e5', background: '#e0e7ff', padding: '0.15rem 0.6rem', borderRadius: '100px' }}>
+                      {ts.totalHours} Hours
                     </span>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', background: '#f1f5f9', padding: '0.15rem 0.6rem', borderRadius: '100px' }}>
-                      {getDuration(leave)}
-                    </span>
+                    {ts.billableStatus && (
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#059669', background: '#d1fae5', padding: '0.15rem 0.6rem', borderRadius: '100px' }}>
+                        {ts.billableStatus}
+                      </span>
+                    )}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.35rem' }}>
                     <Calendar size={13} />
-                    {new Date(leave.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                    {' – '}
-                    {new Date(leave.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {new Date(ts.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {ts.projectName && (
+                      <>
+                        <span style={{ margin: '0 4px', opacity: 0.5 }}>•</span>
+                        <FileText size={13} /> Project: {ts.projectName}
+                      </>
+                    )}
                   </div>
-                  {leave.reason && (
+                  {ts.description && (
                     <p style={{ color: '#94a3b8', fontSize: '0.8rem', margin: 0, fontStyle: 'italic', marginBottom: '0.2rem' }}>
-                      Reason: "{leave.reason}"
+                       Description: "{ts.description}"
                     </p>
                   )}
-                  {leave.managerComment && (
+                  {ts.managerComment && (
                     <p style={{ color: '#334155', fontSize: '0.8rem', margin: 0, fontStyle: 'italic', fontWeight: 600 }}>
-                      Manager Comment: "{leave.managerComment}"
+                      Manager Comment: "{ts.managerComment}"
                     </p>
                   )}
                   {isPending && (
@@ -186,8 +176,8 @@ const LeaveApprovals = () => {
                       <input 
                         type="text" 
                         placeholder="Add an optional comment before approving/rejecting..." 
-                        value={comments[leave.id] || ''}
-                        onChange={(e) => setComments(prev => ({ ...prev, [leave.id]: e.target.value }))}
+                        value={comments[ts.id] || ''}
+                        onChange={(e) => setComments(prev => ({ ...prev, [ts.id]: e.target.value }))}
                         style={{
                           width: '100%', padding: '0.5rem 0.8rem', borderRadius: '8px', 
                           border: '1px solid #e2e8f0', fontSize: '0.8rem', color: '#475569', outline: 'none'
@@ -202,27 +192,27 @@ const LeaveApprovals = () => {
                   {isPending ? (
                     <>
                       <button
-                        onClick={() => handleAction(leave.id, 'approved')}
-                        disabled={loading[leave.id]}
+                        onClick={() => handleAction(ts.id, 'approved')}
+                        disabled={loading[ts.id]}
                         style={{
                           display: 'flex', alignItems: 'center', gap: '0.4rem',
                           padding: '0.55rem 1.1rem', borderRadius: '10px', border: 'none',
                           background: '#d1fae5', color: '#065f46', cursor: 'pointer',
                           fontWeight: 700, fontSize: '0.82rem', transition: 'all 0.15s',
-                          opacity: loading[leave.id] ? 0.6 : 1
+                          opacity: loading[ts.id] ? 0.6 : 1
                         }}
                       >
                         <CheckCircle size={15} /> Approve
                       </button>
                       <button
-                        onClick={() => handleAction(leave.id, 'rejected')}
-                        disabled={loading[leave.id]}
+                        onClick={() => handleAction(ts.id, 'rejected')}
+                        disabled={loading[ts.id]}
                         style={{
                           display: 'flex', alignItems: 'center', gap: '0.4rem',
                           padding: '0.55rem 1.1rem', borderRadius: '10px', border: 'none',
                           background: '#fee2e2', color: '#991b1b', cursor: 'pointer',
                           fontWeight: 700, fontSize: '0.82rem', transition: 'all 0.15s',
-                          opacity: loading[leave.id] ? 0.6 : 1
+                          opacity: loading[ts.id] ? 0.6 : 1
                         }}
                       >
                         <XCircle size={15} /> Reject
@@ -231,7 +221,7 @@ const LeaveApprovals = () => {
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: sBg, color: sColor, padding: '0.45rem 0.9rem', borderRadius: '100px', fontWeight: 700, fontSize: '0.78rem' }}>
                       <StatusIcon size={14} />
-                      {statusConfig[leave.status]?.label}
+                      {statusConfig[ts.status]?.label}
                     </div>
                   )}
                 </div>
@@ -244,4 +234,4 @@ const LeaveApprovals = () => {
   );
 };
 
-export default LeaveApprovals;
+export default TimesheetApprovals;
