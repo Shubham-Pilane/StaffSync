@@ -15,6 +15,7 @@ const Timesheets = () => {
     description: '', hourMode: 'total', hours: '00:00',
     startTime: '', endTime: '', billableStatus: 'Billable'
   });
+  const [submittingApproval, setSubmittingApproval] = useState(false);
 
   const fetchTimesheets = async () => {
     try {
@@ -97,6 +98,25 @@ const Timesheets = () => {
     } finally { setSubmitting(false); }
   };
 
+  const handleSubmitForApproval = async () => {
+    const drafts = timesheets.filter(t => t.status === 'draft');
+    if (drafts.length === 0) {
+      setNotification({ message: 'No draft timesheets to submit.', type: 'info' });
+      return;
+    }
+
+    setSubmittingApproval(true);
+    try {
+      await api.patch('/timesheets/submit');
+      fetchTimesheets();
+      setNotification({ message: 'Timesheets submitted for approval!', type: 'success' });
+    } catch (err) {
+      setNotification({ message: 'Failed to submit timesheets.', type: 'error' });
+    } finally {
+      setSubmittingApproval(false);
+    }
+  };
+
   // ── Summary totals ────────────────────────────────────────────
   const thisMonth = timesheets.filter(t => {
     const d = new Date(t.date);
@@ -124,7 +144,7 @@ const Timesheets = () => {
     calCells.push({ day: calCells.length - daysInMonth - gridOffset + 1, current: false });
   }
 
-  const statusColor = { approved: '#10b981', pending: '#f59e0b', rejected: '#ef4444' };
+  const statusColor = { draft: '#94a3b8', approved: '#10b981', pending: '#f59e0b', rejected: '#ef4444' };
 
   return (
     <div style={{ maxWidth: '1200px' }}>
@@ -145,10 +165,21 @@ const Timesheets = () => {
             <Plus size={18} /> Log Time
           </button>
           <button
+            onClick={handleSubmitForApproval}
+            disabled={submittingApproval}
             className="btn"
-            style={{ borderRadius: '12px', padding: '0.75rem 1.5rem', background: '#f1f5f9', color: '#1e293b', border: 'none', fontWeight: 700 }}
+            style={{ 
+              borderRadius: '12px', 
+              padding: '0.75rem 1.5rem', 
+              background: '#f1f5f9', 
+              color: '#1e293b', 
+              border: 'none', 
+              fontWeight: 700,
+              opacity: submittingApproval ? 0.7 : 1,
+              cursor: submittingApproval ? 'not-allowed' : 'pointer'
+            }}
           >
-            <Send size={18} /> Submit for Approval
+            <Send size={18} /> {submittingApproval ? 'Submitting...' : 'Submit for Approval'}
           </button>
         </div>
       </div>
@@ -255,7 +286,7 @@ const Timesheets = () => {
                   {/* Log chips */}
                   {logs.map((log, li) => (
                     <div key={li} style={{
-                      background: log.status === 'approved' ? '#d1fae5' : log.status === 'rejected' ? '#fee2e2' : '#ede9fe',
+                    background: log.status === 'approved' ? '#d1fae5' : log.status === 'rejected' ? '#fee2e2' : log.status === 'draft' ? '#f1f5f9' : '#ede9fe',
                       color: statusColor[log.status] || '#8b5cf6',
                       borderRadius: '6px',
                       padding: '0.25rem 0.5rem',

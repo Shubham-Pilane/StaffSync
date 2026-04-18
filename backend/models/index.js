@@ -32,7 +32,10 @@ const User = sequelize.define('User', {
   department:  { type: DataTypes.STRING },
   salary:      { type: DataTypes.DECIMAL(10, 2) },
   managerId:   { type: DataTypes.INTEGER, allowNull: true },
-  companyId:   { type: DataTypes.INTEGER, allowNull: true }
+  companyId:   { type: DataTypes.INTEGER, allowNull: true },
+  annualLeaveLimit: { type: DataTypes.INTEGER, defaultValue: 18 },
+  sickLeaveLimit:   { type: DataTypes.INTEGER, defaultValue: 12 },
+  casualLeaveLimit: { type: DataTypes.INTEGER, defaultValue: 6 }
 });
 
 const Attendance = sequelize.define('Attendance', {
@@ -66,8 +69,8 @@ const Timesheet = sequelize.define('Timesheet', {
   startTime:      { type: DataTypes.STRING },
   endTime:        { type: DataTypes.STRING },
   status: { 
-    type: DataTypes.ENUM('pending', 'approved', 'rejected'), 
-    defaultValue: 'pending' 
+    type: DataTypes.ENUM('draft', 'pending', 'approved', 'rejected'), 
+    defaultValue: 'draft' 
   },
   managerComment: { type: DataTypes.TEXT }
 });

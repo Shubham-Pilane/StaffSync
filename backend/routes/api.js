@@ -44,8 +44,10 @@ router.put('/companies/:id/status', auth, checkRole(['SuperAdmin']), companyCont
 
 // Timesheet Routes
 router.post('/timesheets', auth, workflowController.submitTimesheet);
+router.patch('/timesheets/submit', auth, workflowController.submitDraftTimesheets);
 router.get('/timesheets/my', auth, workflowController.getMyTimesheets);
 router.get('/timesheets/pending', auth, checkRole(['Manager', 'HR']), workflowController.getPendingTimesheets);
+router.patch('/timesheets/bulk-approval', auth, checkRole(['Manager', 'HR']), workflowController.bulkApproveReject);
 router.patch('/timesheets/:id', auth, checkRole(['Manager', 'HR']), workflowController.updateTimesheetStatus);
 
 module.exports = router;

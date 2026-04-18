@@ -28,11 +28,13 @@ const Leaves = () => {
   const [formData, setFormData]       = useState({
     type: 'Annual', startDate: '', endDate: '', reason: ''
   });
+  const [limits, setLimits]           = useState({ annualLeaveLimit: 18, sickLeaveLimit: 12, casualLeaveLimit: 6 });
 
   const fetchLeaves = async () => {
     try {
       const res = await api.get('/leaves/my');
-      setLeaves(res.data || []);
+      setLeaves(res.data.leaves || []);
+      if (res.data.limits) setLimits(res.data.limits);
     } catch (err) { console.error(err); }
   };
 
@@ -106,9 +108,11 @@ const Leaves = () => {
       {/* Leave Balance Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem', marginBottom: '2.5rem' }}>
         {LEAVE_TYPES.map(({ label, value, icon: Icon, color, bg, total }) => {
+          const limitKey = `${value.toLowerCase()}LeaveLimit`;
+          const currentLimit = limits[limitKey] || total;
           const used      = getUsedDays(value);
-          const remaining = total - used;
-          const pct       = Math.min((used / total) * 100, 100);
+          const remaining = currentLimit - used;
+          const pct       = Math.min((used / currentLimit) * 100, 100);
           return (
             <div key={value} className="card" style={{ padding: '1.75rem', border: `1px solid ${color}22` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
@@ -127,7 +131,7 @@ const Leaves = () => {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>
                 <span>{used} used</span>
-                <span>{total} total</span>
+                <span>{currentLimit} total</span>
               </div>
             </div>
           );

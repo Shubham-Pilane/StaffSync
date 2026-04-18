@@ -1,5 +1,6 @@
 const { Leave, Timesheet, User } = require('../models');
 const { Op } = require('sequelize');
+const emailService = require('../services/emailService');
 
 // Leave Controllers
 exports.getMyLeaves = async (req, res) => {
@@ -8,7 +9,13 @@ exports.getMyLeaves = async (req, res) => {
       where: { userId: req.user.id },
       order: [['createdAt', 'DESC']]
     });
-    res.json(leaves);
+    
+    // Also fetch current user's leave limits
+    const user = await User.findByPk(req.user.id, {
+      attributes: ['annualLeaveLimit', 'sickLeaveLimit', 'casualLeaveLimit']
+    });
+
+    res.json({ leaves, limits: user || { annualLeaveLimit: 18, sickLeaveLimit: 12, casualLeaveLimit: 6 } });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -61,6 +68,24 @@ exports.updateLeaveStatus = async (req, res) => {
       leave.managerComment = managerComment;
     }
     await leave.save();
+
+    // Send email notification
+    try {
+      const employee = await User.findByPk(leave.userId);
+      if (employee && employee.email) {
+        await emailService.sendStatusNotification({
+          to: employee.email,
+          employeeName: employee.name,
+          type: 'Leave',
+          status: leave.status,
+          managerComment: leave.managerComment,
+          details: `${leave.type} (${leave.startDate} to ${leave.endDate})`
+        });
+      }
+    } catch (emailError) {
+      console.error('Failed to send leave status email:', emailError);
+    }
+
     res.json(leave);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -132,8 +157,77 @@ exports.updateTimesheetStatus = async (req, res) => {
       timesheet.managerComment = managerComment;
     }
     await timesheet.save();
+
+    // Send email notification
+    try {
+      const employee = await User.findByPk(timesheet.userId);
+      if (employee && employee.email) {
+        await emailService.sendStatusNotification({
+          to: employee.email,
+          employeeName: employee.name,
+          type: 'Timesheet',
+          status: timesheet.status,
+          managerComment: timesheet.managerComment,
+          details: `${timesheet.totalHours} hours worked on ${timesheet.date}${timesheet.projectName ? ` for ${timesheet.projectName}` : ''}`
+        });
+      }
+    } catch (emailError) {
+      console.error('Failed to send timesheet status email:', emailError);
+    }
+
     res.json(timesheet);
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+};
+
+exports.bulkApproveReject = async (req, res) => {
+  try {
+    const { ids, status, managerComment } = req.body;
+    if (!ids || !Array.isArray(ids)) return res.status(400).json({ error: 'Invalid IDs' });
+
+    await Timesheet.update(
+      { status, managerComment },
+      { 
+        where: { 
+          id: ids,
+          managerId: req.user.id
+        } 
+      }
+    );
+
+    // Send emails (Simplified for batch)
+    const firstTs = await Timesheet.findByPk(ids[0], { include: [User] });
+    if (firstTs && firstTs.User && firstTs.User.email) {
+      emailService.sendStatusNotification({
+        to: firstTs.User.email,
+        employeeName: firstTs.User.name,
+        type: 'Timesheet (Batch)',
+        status,
+        managerComment,
+        details: `Batch update for ${ids.length} logs.`
+      }).catch(err => console.error('Email failed:', err));
+    }
+
+    res.json({ message: `Successfully ${status} ${ids.length} logs.` });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.submitDraftTimesheets = async (req, res) => {
+  try {
+    const [updatedCount] = await Timesheet.update(
+      { status: 'pending' },
+      { 
+        where: { 
+          userId: req.user.id,
+          status: 'draft'
+        } 
+      }
+    );
+    res.json({ message: `${updatedCount} timesheets submitted for approval.`, updatedCount });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };
