@@ -2,15 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { 
   Briefcase, Clock, Calendar, Users, FileText, 
   MapPin, CheckCircle, Smile, Bell, Search, PlusCircle,
-  MoreHorizontal, ChevronRight, Play, Square, UserCheck, MessageSquare
+  MoreHorizontal, ChevronRight, Play, Square, UserCheck, MessageSquare, Coffee
 } from 'lucide-react';
 import Attendance from './Attendance';
 import Timesheets from './Timesheets';
 import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import Toast from '../components/Toast';
 
 const MySpace = () => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState('Overview');
   const [activeSubTab, setActiveSubTab] = useState('Activities');
   const [activeTopTab, setActiveTopTab] = useState('My Space');
@@ -22,53 +23,93 @@ const MySpace = () => {
   const [elapsed, setElapsed] = useState('00:00:00');
   const [manager, setManager] = useState(null);
   const [team, setTeam] = useState([]);
+  const [notification, setNotification] = useState(null);
+  const [currentUser, setCurrentUser] = useState(user);
+
+  const refreshAllData = async () => {
+    try {
+      // 1. Get latest profile (includes Manager)
+      const profileRes = await api.get('/profile');
+      const freshUser = profileRes.data;
+      setCurrentUser(freshUser);
+      
+      if (freshUser.Manager) {
+        setManager(freshUser.Manager);
+      }
+
+      // 2. Get teammates
+      const teamRes = await api.get('/employees');
+      const userDept = freshUser.department?.toLowerCase()?.trim();
+      const myTeammates = teamRes.data.filter(emp => 
+        emp.department?.toLowerCase()?.trim() === userDept && 
+        String(emp.id) !== String(freshUser.id)
+      );
+      setTeam(myTeammates);
+      
+      // 3. Get Attendance History
+      const attRes = await api.get('/attendance/history');
+      setAttendanceHistory(attRes.data);
+      const active = attRes.data.find(a => !a.checkOut);
+      setActiveAttendance(active);
+
+    } catch (err) { console.error('Data loading error:', err); }
+  };
 
   useEffect(() => {
-    const fetchTeamData = async () => {
-      try {
-        const teamRes = await api.get('/employees');
-        const myDept = teamRes.data.filter(emp => emp.department === user?.department && emp.id !== user?.id);
-        setTeam(myDept);
-        if (user?.managerId) {
-          const mgr = teamRes.data.find(emp => emp.id === user.managerId);
-          setManager(mgr);
-        }
-      } catch (err) { console.error(err); }
-    };
-    if (user) fetchTeamData();
-  }, [user]);
-
-  useEffect(() => {
-    const checkAttendance = async () => {
-      try {
-        const res = await api.get('/attendance/history');
-        const active = res.data.find(a => !a.checkOut);
-        setActiveAttendance(active);
-      } catch (err) { console.error(err); }
-    };
-    checkAttendance();
+    refreshAllData();
+    // Refresh every 30 seconds to keep manager status/team status live
+    const interval = setInterval(refreshAllData, 30000);
+    return () => clearInterval(interval);
   }, []);
+
+  const [attendanceHistory, setAttendanceHistory] = useState([]);
+
 
   useEffect(() => {
     let timer;
-    if (activeAttendance) {
-      timer = setInterval(() => {
-        const start = new Date(activeAttendance.checkIn);
-        const now = new Date();
-        const diff = Math.floor((now - start) / 1000);
-        const h = Math.floor(diff / 3600).toString().padStart(2, '0');
-        const m = Math.floor((diff % 3600) / 60).toString().padStart(2, '0');
-        const s = (diff % 60).toString().padStart(2, '0');
-        setElapsed(`${h}:${m}:${s}`);
-      }, 1000);
-    } else {
-      setElapsed('00:00:00');
-    }
+    
+    timer = setInterval(() => {
+      const now = new Date();
+      
+      // Calculate start of current 10 AM cycle
+      const cycleStart = new Date(now);
+      cycleStart.setHours(10, 0, 0, 0);
+      if (now < cycleStart) {
+        cycleStart.setDate(cycleStart.getDate() - 1);
+      }
+
+      let totalMs = 0;
+
+      // Sum up completed sessions within the cycle
+      attendanceHistory.forEach(session => {
+        const checkIn = new Date(session.checkIn);
+        const checkOut = session.checkOut ? new Date(session.checkOut) : now;
+        
+        // Skip sessions entirely before this cycle
+        if (checkOut < cycleStart) return;
+
+        // Clip the start to 10 AM if the session started earlier
+        const effectiveStart = checkIn < cycleStart ? cycleStart : checkIn;
+        
+        // Sum the duration
+        if (checkOut > effectiveStart) {
+          totalMs += (checkOut - effectiveStart);
+        }
+      });
+
+      const diff = Math.floor(totalMs / 1000);
+      const h = Math.floor(diff / 3600).toString().padStart(2, '0');
+      const m = Math.floor((diff % 3600) / 60).toString().padStart(2, '0');
+      const s = (diff % 60).toString().padStart(2, '0');
+      setElapsed(`${h}:${m}:${s}`);
+    }, 1000);
+
     return () => clearInterval(timer);
-  }, [activeAttendance]);
+  }, [attendanceHistory, activeAttendance]);
 
   return (
     <div style={{ marginLeft: '-2rem', marginTop: '-2rem', width: 'calc(100% + 4rem)', minHeight: '100vh', background: '#f8fafc' }}>
+      {notification && <Toast {...notification} onClose={() => setNotification(null)} />}
       {/* Top Header */}
       <div style={{ background: '#0f172a', color: 'white', padding: '0.75rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', gap: '2rem' }}>
@@ -151,6 +192,50 @@ const MySpace = () => {
                 Go to Check-out
               </button>
             )}
+          </div>
+
+          {/* Manual Status Picker */}
+          <div className="card" style={{ padding: '1.25rem', background: 'white' }}>
+            <h4 style={{ fontSize: '0.85rem', color: '#94a3b8', marginBottom: '1rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>My Current Status</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              {[
+                { id: 'active', label: 'Active', icon: UserCheck, color: '#10b981', bg: '#d1fae5' },
+                { id: 'teaBreak', label: 'Tea Break', icon: Coffee, color: '#8b5cf6', bg: '#ede9fe' },
+                { id: 'lunchBreak', label: 'Lunch', icon: Coffee, color: '#f97316', bg: '#fff7ed' },
+                { id: 'meeting', label: 'Meeting', icon: MessageSquare, color: '#06b6d4', bg: '#ecfeff' },
+              ].map(st => {
+                const isSelected = currentUser?.status === st.id;
+                return (
+                  <button
+                    key={st.id}
+                    onClick={async () => {
+                      try {
+                        await api.post('/activity/heartbeat', { status: st.id });
+                        setNotification({ message: `Status updated to ${st.label}`, type: 'success' });
+                        
+                        // 1. Update Global Auth State (Disables Tracker)
+                        updateUser({ status: st.id });
+                        
+                        // 2. Update Local Dashboard Profile
+                        setCurrentUser(prev => ({ ...prev, status: st.id }));
+                      } catch (err) { 
+                        setNotification({ message: 'Failed to update status', type: 'error' });
+                      }
+                    }}
+                    style={{
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem',
+                      padding: '0.75rem 0.5rem', borderRadius: '12px', cursor: 'pointer',
+                      border: isSelected ? `2px solid ${st.color}` : '2px solid #f1f5f9',
+                      background: isSelected ? st.bg : '#fff',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <st.icon size={18} color={st.color} />
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: isSelected ? st.color : '#64748b' }}>{st.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div className="card" style={{ padding: '1.25rem', background: 'white' }}>

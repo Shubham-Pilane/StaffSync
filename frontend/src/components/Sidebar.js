@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Building2, Calendar, ClipboardCheck, 
-  Hourglass, LogOut, Settings, UserCircle, Briefcase
+  Hourglass, LogOut, Settings, UserCircle, Briefcase, Activity
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -38,6 +38,7 @@ const Sidebar = () => {
       { path: '/employees',              icon: <Users size={20} />,           label: 'My Team' },
       { path: '/approvals/leaves',       icon: <Hourglass size={20} />,       label: 'Leave Approvals' },
       { path: '/approvals/timesheets',   icon: <ClipboardCheck size={20} />,  label: 'Timesheet Approvals' },
+      { path: '/tracking',              icon: <Activity size={20} />,         label: 'Team Activity' },
     ],
     Employee: [
       { path: '/dashboard', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },

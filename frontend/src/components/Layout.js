@@ -1,10 +1,12 @@
 import React from 'react';
 import Sidebar from './Sidebar';
 import { useAuth } from '../context/AuthContext';
+import useActivityTracker from '../hooks/useActivityTracker';
 import { Navigate } from 'react-router-dom';
 
 const Layout = ({ children }) => {
   const { user, loading } = useAuth();
+  useActivityTracker(user);
 
   if (loading) return <div>Loading...</div>;
   if (!user) return <Navigate to="/login" />;

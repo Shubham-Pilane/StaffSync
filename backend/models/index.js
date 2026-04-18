@@ -35,7 +35,12 @@ const User = sequelize.define('User', {
   companyId:   { type: DataTypes.INTEGER, allowNull: true },
   annualLeaveLimit: { type: DataTypes.INTEGER, defaultValue: 18 },
   sickLeaveLimit:   { type: DataTypes.INTEGER, defaultValue: 12 },
-  casualLeaveLimit: { type: DataTypes.INTEGER, defaultValue: 6 }
+  casualLeaveLimit: { type: DataTypes.INTEGER, defaultValue: 6 },
+  status: { 
+    type: DataTypes.ENUM('active', 'idle', 'away', 'offline', 'teaBreak', 'meeting', 'lunchBreak', 'onLeave'), 
+    defaultValue: 'offline' 
+  },
+  lastActivityAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW }
 });
 
 const Attendance = sequelize.define('Attendance', {
@@ -75,9 +80,19 @@ const Timesheet = sequelize.define('Timesheet', {
   managerComment: { type: DataTypes.TEXT }
 });
 
+const StatusLog = sequelize.define('StatusLog', {
+  status: { type: DataTypes.STRING, allowNull: false },
+  startTime: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+  endTime: { type: DataTypes.DATE },
+  durationMs: { type: DataTypes.INTEGER, defaultValue: 0 }
+});
+
 // Associations
 Company.hasMany(User, { foreignKey: 'companyId' });
 User.belongsTo(Company, { foreignKey: 'companyId' });
+
+User.hasMany(StatusLog, { foreignKey: 'userId' });
+StatusLog.belongsTo(User, { foreignKey: 'userId' });
 
 User.belongsTo(User, { as: 'Manager', foreignKey: 'managerId' });
 User.hasMany(User, { as: 'Subordinates', foreignKey: 'managerId' });
@@ -95,4 +110,4 @@ Timesheet.belongsTo(User, { foreignKey: 'userId' });
 User.hasMany(Timesheet, { as: 'ManagedTimesheets', foreignKey: 'managerId' });
 Timesheet.belongsTo(User, { as: 'Approver', foreignKey: 'managerId' });
 
-module.exports = { sequelize, Company, User, Attendance, Leave, Timesheet };
+module.exports = { sequelize, Company, User, Attendance, Leave, Timesheet, StatusLog };

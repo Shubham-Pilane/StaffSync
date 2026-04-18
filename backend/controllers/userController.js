@@ -1,6 +1,18 @@
-const { User, Company } = require('../models');
+const { User, Company, Leave, StatusLog } = require('../models');
+const { Op } = require('sequelize');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+
+exports.getProfile = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id, {
+      include: [{ model: User, as: 'Manager', attributes: ['name', 'department', 'status'] }]
+    });
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
 
 exports.login = async (req, res) => {
   try {
@@ -18,7 +30,16 @@ exports.login = async (req, res) => {
       return res.status(403).json({ error: 'Company account is ' + user.Company.status });
     }
 
-    const token = jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET);
+    const token = jwt.sign(
+      { 
+        id: user.id, 
+        role: user.role, 
+        companyId: user.companyId,
+        department: user.department,
+        managerId: user.managerId 
+      },
+      process.env.JWT_SECRET
+    );
     res.json({ user, token });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -41,7 +62,8 @@ exports.addEmployee = async (req, res) => {
       department,
       managerId: processedManagerId,
       password: hashedPassword,
-      companyId: req.user.companyId
+      companyId: req.user.companyId,
+      status: 'offline'
     });
 
     res.status(201).json(employee);
@@ -71,6 +93,87 @@ exports.getManagers = async (req, res) => {
       }
     });
     res.json(managers);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.updateActivityStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const userId = req.user.id;
+    const newStatus = status || 'active';
+
+    // Get current user to check if status is changing
+    const user = await User.findByPk(userId);
+    
+    if (user && user.status !== newStatus) {
+      const now = new Date();
+      
+      // Close existing open log if any
+      const openLog = await StatusLog.findOne({
+        where: { userId, endTime: null },
+        order: [['startTime', 'DESC']]
+      });
+
+      if (openLog) {
+        const duration = now - openLog.startTime;
+        await openLog.update({
+          endTime: now,
+          durationMs: duration
+        });
+      }
+
+      // Start new log
+      await StatusLog.create({
+        userId,
+        status: newStatus,
+        startTime: now
+      });
+    }
+
+    await User.update(
+      { status: newStatus, lastActivityAt: new Date() },
+      { where: { id: userId } }
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+exports.getSubordinateStatuses = async (req, res) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const subordinates = await User.findAll({
+      where: { managerId: req.user.id },
+      attributes: ['id', 'name', 'email', 'department', 'status', 'lastActivityAt']
+    });
+
+    // Check for today's approved leaves for these subordinates
+    const memberIds = subordinates.map(s => s.id);
+    const leavesToday = await Leave.findAll({
+      where: {
+        userId: memberIds,
+        status: 'approved',
+        startDate: { [Op.lte]: today },
+        endDate: { [Op.gte]: today }
+      }
+    });
+
+    const leaveUserIds = new Set(leavesToday.map(l => l.userId));
+
+    // Map the status
+    const dynamicSubordinates = subordinates.map(s => {
+      const data = s.toJSON();
+      if (leaveUserIds.has(s.id)) {
+        data.status = 'onLeave';
+      }
+      return data;
+    });
+
+    res.json(dynamicSubordinates);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

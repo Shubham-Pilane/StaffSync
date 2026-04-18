@@ -32,19 +32,39 @@ const Attendance = () => {
 
   useEffect(() => {
     let timer;
-    if (activeAttendance) {
-      timer = setInterval(() => {
-        const start = new Date(activeAttendance.checkIn);
-        const now = new Date();
-        const diff = Math.floor((now - start) / 1000);
-        const hrs = Math.floor(diff / 3600).toString().padStart(2, '0');
-        const mins = Math.floor((diff % 3600) / 60).toString().padStart(2, '0');
-        const secs = (diff % 60).toString().padStart(2, '0');
-        setElapsed(`${hrs}:${mins}:${secs}`);
-      }, 1000);
-    }
+    timer = setInterval(() => {
+      const now = new Date();
+      
+      // Calculate start of current 10 AM cycle
+      const cycleStart = new Date(now);
+      cycleStart.setHours(10, 0, 0, 0);
+      if (now < cycleStart) {
+        cycleStart.setDate(cycleStart.getDate() - 1);
+      }
+
+      let totalMs = 0;
+
+      // Sum sessions in history that fall within the cycle
+      history.forEach(session => {
+        const checkIn = new Date(session.checkIn);
+        const checkOut = session.checkOut ? new Date(session.checkOut) : now;
+        
+        if (checkOut < cycleStart) return;
+        const effectiveStart = checkIn < cycleStart ? cycleStart : checkIn;
+        if (checkOut > effectiveStart) {
+          totalMs += (checkOut - effectiveStart);
+        }
+      });
+
+      const diff = Math.floor(totalMs / 1000);
+      const hrs = Math.floor(diff / 3600).toString().padStart(2, '0');
+      const mins = Math.floor((diff % 3600) / 60).toString().padStart(2, '0');
+      const secs = (diff % 60).toString().padStart(2, '0');
+      setElapsed(`${hrs}:${mins}:${secs}`);
+    }, 1000);
+
     return () => clearInterval(timer);
-  }, [activeAttendance]);
+  }, [history, activeAttendance]);
 
   const handleCheckIn = async () => {
     setLoading(true);

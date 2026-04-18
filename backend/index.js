@@ -27,3 +27,12 @@ sequelize.sync({ alter: true }) // Auto-update tables
   .catch(err => {
     console.error('Database connection failed:', err);
   });
+
+process.on('uncaughtException', (err) => {
+  console.error('☢️ UNCAUGHT EXCEPTION:', err.message);
+  console.error(err.stack);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('☢️ UNHANDLED REJECTION at:', promise, 'reason:', reason);
+});

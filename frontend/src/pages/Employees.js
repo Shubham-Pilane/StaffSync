@@ -131,9 +131,15 @@ const Employees = () => {
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', zIndex: 1000,
-          display: 'flex', alignItems: 'center', justifyContent: 'center'
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '2rem', overflowY: 'auto'
         }}>
-          <div className="modal-solid animate-fade" style={{ width: '100%', maxWidth: '540px' }}>
+          <div className="modal-solid animate-fade" style={{ 
+            width: '100%', 
+            maxWidth: '540px',
+            maxHeight: 'calc(100vh - 4rem)',
+            overflowY: 'auto'
+          }}>
             <h2 style={{ fontWeight: 800, fontSize: '1.75rem', marginBottom: '0.5rem', color: '#1e293b' }}>Onboard New Employee</h2>
             <p style={{ color: '#64748b', marginBottom: '2rem', fontWeight: 500 }}>Add a new member to your organization's workforce.</p>
             <form onSubmit={handleAddEmployee}>
