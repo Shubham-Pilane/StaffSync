@@ -87,7 +87,7 @@ const Leaves = () => {
       {notification && <Toast {...notification} onClose={() => setNotification(null)} />}
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 style={{ fontSize: '1.875rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
             Leave Management
@@ -106,7 +106,7 @@ const Leaves = () => {
       </div>
 
       {/* Leave Balance Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem', marginBottom: '2.5rem' }}>
+      <div className="grid-responsive-3" style={{ marginBottom: '2.5rem' }}>
         {LEAVE_TYPES.map(({ label, value, icon: Icon, color, bg, total }) => {
           const limitKey = `${value.toLowerCase()}LeaveLimit`;
           const currentLimit = limits[limitKey] || total;
@@ -141,7 +141,7 @@ const Leaves = () => {
       {/* History Section */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         {/* Card Header */}
-        <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <FileText size={20} color="#4f46e5" />
             <h2 style={{ fontWeight: 800, color: '#1e293b', fontSize: '1.05rem' }}>Leave History</h2>
@@ -152,7 +152,7 @@ const Leaves = () => {
             )}
           </div>
           {/* Filter pills */}
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <div className="scrollable-tabs" style={{ display: 'flex', gap: '0.5rem' }}>
             {['all', 'pending', 'approved', 'rejected'].map(f => (
               <button
                 key={f}
@@ -194,11 +194,7 @@ const Leaves = () => {
                 const TypeIcon   = typeInfo.icon;
 
                 return (
-                  <div key={leave.id} style={{
-                    display: 'grid',
-                    gridTemplateColumns: '44px 1fr auto',
-                    alignItems: 'center',
-                    gap: '1.25rem',
+                  <div key={leave.id} className="leave-history-item" style={{
                     padding: '1.25rem 1rem',
                     borderRadius: '16px',
                     border: '1px solid #f1f5f9',

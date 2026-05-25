@@ -108,11 +108,11 @@ const MySpace = () => {
   }, [attendanceHistory, activeAttendance]);
 
   return (
-    <div style={{ marginLeft: '-2rem', marginTop: '-2rem', width: 'calc(100% + 4rem)', minHeight: '100vh', background: '#f8fafc' }}>
+    <div className="myspace-wrapper">
       {notification && <Toast {...notification} onClose={() => setNotification(null)} />}
       {/* Top Header */}
-      <div style={{ background: '#0f172a', color: 'white', padding: '0.75rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', gap: '2rem' }}>
+      <div style={{ background: '#0f172a', color: 'white', padding: '0.75rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+        <div className="scrollable-tabs" style={{ display: 'flex', gap: '2rem' }}>
           {topTabs.map(tab => (
             <div 
               key={tab} 
@@ -141,7 +141,7 @@ const MySpace = () => {
       </div>
 
       <div style={{ background: 'white', padding: '0 2rem', borderBottom: '1px solid #e2e8f0' }}>
-        <div style={{ display: 'flex', gap: '2rem' }}>
+        <div className="scrollable-tabs" style={{ display: 'flex', gap: '2rem' }}>
           {subTabs.map(tab => (
             <div 
               key={tab}
@@ -163,10 +163,10 @@ const MySpace = () => {
 
       <div style={{ height: '180px', width: '100%', background: 'url("https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&q=80&w=2070") center/cover no-repeat', filter: 'brightness(0.8)' }}></div>
 
-      <div style={{ display: 'flex', padding: '0 2rem', marginTop: '-60px', gap: '2rem', position: 'relative', zIndex: 10 }}>
+      <div className="flex-responsive" style={{ padding: '0 2rem', marginTop: '-60px', gap: '2rem', position: 'relative', zIndex: 10 }}>
         
         {/* Left Column */}
-        <div style={{ width: '300px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div className="myspace-left-col" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div className="modal-solid" style={{ textAlign: 'center', padding: '2rem', background: 'white' }}>
             <div style={{ width: '120px', height: '120px', borderRadius: '24px', margin: '-4rem auto 1.5rem', overflow: 'hidden', border: '5px solid white', boxShadow: 'var(--shadow-lg)' }}>
               <img src={activeAttendance?.selfiePath ? `http://localhost:5000/${activeAttendance.selfiePath}` : `https://ui-avatars.com/api/?name=${user?.name}&background=8b5cf6&color=fff&size=200`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="profile" />
@@ -274,9 +274,9 @@ const MySpace = () => {
 
         {/* Right Column */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div className="glass-card" style={{ padding: '0 1rem', background: 'white' }}>
+          <div className="glass-card" style={{ padding: '0 1rem', background: 'white', overflow: 'hidden' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', gap: '2rem' }}>
+              <div className="scrollable-tabs" style={{ display: 'flex', gap: '2rem', width: '100%' }}>
                 {functionalTabs.map(tab => (
                   <div 
                     key={tab}
@@ -332,7 +332,7 @@ const ActivitiesView = ({ name }) => (
       </div>
       <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>06-Apr-2026 - 12-Apr-2026</p>
       
-      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+      <div className="myspace-schedule-days">
         {['Mon 06', 'Tue 07', 'Wed 08', 'Thu 09', 'Fri 10', 'Sat 11', 'Sun 12'].map(day => (
           <div key={day} style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748b', marginBottom: '0.5rem' }}>{day}</div>

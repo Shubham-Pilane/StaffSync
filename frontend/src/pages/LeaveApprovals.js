@@ -75,7 +75,7 @@ const LeaveApprovals = () => {
       </div>
 
       {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
+      <div className="grid-responsive-3" style={{ gap: '1rem', marginBottom: '2rem' }}>
         {[
           { label: 'Awaiting Action', value: leaves.filter(l => l.status === 'pending').length,  color: '#f59e0b' },
           { label: 'Approved',        value: leaves.filter(l => l.status === 'approved').length, color: '#10b981' },
@@ -137,8 +137,7 @@ const LeaveApprovals = () => {
             const isPending = leave.status === 'pending';
 
             return (
-              <div key={leave.id} style={{
-                display: 'flex', alignItems: 'center', gap: '1.25rem',
+              <div key={leave.id} className="leave-approval-card" style={{
                 padding: '1.25rem', borderRadius: '16px',
                 border: isPending ? '1px solid #fde68a' : '1px solid #f1f5f9',
                 background: isPending ? '#fffbeb' : 'white',

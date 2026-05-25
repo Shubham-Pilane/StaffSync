@@ -58,6 +58,8 @@ body {
   flex: 1;
   margin-left: var(--sidebar-width);
   padding: 2.5rem;
+  min-height: 100vh;
+  background: var(--bg-main);
   transition: all 0.3s ease;
 }
 
@@ -134,6 +136,7 @@ body {
   overflow-x: auto;
   border-radius: var(--radius);
   border: 1px solid var(--border);
+  -webkit-overflow-scrolling: touch;
 }
 
 table {
@@ -204,3 +207,270 @@ tr:last-child td {
 .animate-fade {
   animation: fadeIn 0.4s ease-out forwards;
 }
+
+/* ==========================================================================
+   Mobile Responsive Utilities
+   ========================================================================== */
+
+/* Mobile Navigation Header */
+.mobile-header {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  background: #0f172a;
+  color: white;
+  padding: 0.75rem 1.25rem;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  z-index: 1010;
+  border-bottom: 1px solid #1e293b;
+  box-shadow: var(--shadow);
+}
+
+/* Sidebar Backdrop Blur */
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 1005;
+  cursor: pointer;
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+.sidebar-backdrop.active {
+  display: block;
+}
+
+/* Flex & Grid Responsive Wrappers */
+.flex-responsive {
+  display: flex;
+  flex-direction: row;
+  gap: 1.5rem;
+}
+
+.grid-responsive-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+/* Horizontal scrollable tab container */
+.scrollable-tabs {
+  display: flex;
+  gap: 1.5rem;
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+  -webkit-overflow-scrolling: touch;
+}
+
+.scrollable-tabs::-webkit-scrollbar {
+  display: none; /* Safari and Chrome */
+}
+
+.scrollable-tabs > * {
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Media Queries
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+  .flex-responsive {
+    flex-direction: column !important;
+  }
+  
+  .grid-responsive-2 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .mobile-header {
+    display: flex;
+  }
+
+  .sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: -260px !important;
+    height: 100vh !important;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    z-index: 1020 !important;
+  }
+
+  .sidebar.open {
+    left: 0 !important;
+    box-shadow: var(--shadow-lg) !important;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+    padding: 1.25rem !important;
+    margin-top: 60px !important;
+  }
+
+  /* General typography scaling on mobile */
+  h1 {
+    font-size: 1.6rem !important;
+    letter-spacing: -0.02em !important;
+  }
+  
+  h2 {
+    font-size: 1.3rem !important;
+  }
+
+  /* Modal responsiveness */
+  .modal-solid {
+    padding: 1.5rem !important;
+    width: 92% !important;
+    max-width: 480px !important;
+  }
+  
+  /* Scaling down huge attendance timers */
+  .mobile-timer-unit {
+    width: 52px !important;
+    height: 52px !important;
+    font-size: 1.5rem !important;
+    border-radius: 8px !important;
+  }
+}
+
+/* MySpace Custom Responsive Classes */
+.myspace-wrapper {
+  margin-left: -2.5rem;
+  margin-top: -2.5rem;
+  width: calc(100% + 5rem);
+  min-height: 100vh;
+  background: #f8fafc;
+}
+
+.myspace-left-col {
+  width: 300px;
+}
+
+.myspace-schedule-days {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+@media (max-width: 1024px) {
+  .myspace-left-col {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .myspace-wrapper {
+    margin-left: -1.25rem !important;
+    margin-top: -1.25rem !important;
+    width: calc(100% + 2.5rem) !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .myspace-schedule-days {
+    justify-content: flex-start !important;
+    overflow-x: auto !important;
+    gap: 1.25rem !important;
+    padding-bottom: 0.5rem !important;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .myspace-schedule-days::-webkit-scrollbar {
+    display: none;
+  }
+  .myspace-schedule-days > * {
+    flex-shrink: 0 !important;
+  }
+}
+
+/* Custom Page Responsive Utilities */
+.grid-responsive-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+.timesheets-right-col {
+  width: 280px;
+}
+
+.leave-history-item {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+@media (max-width: 1024px) {
+  .timesheets-right-col {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .grid-responsive-3 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .leave-history-item {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+}
+
+.grid-responsive-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+  .grid-responsive-stats {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 580px) {
+  .grid-responsive-stats {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.leave-approval-card {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+@media (max-width: 680px) {
+  .leave-approval-card {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 1rem !important;
+  }
+  
+  .leave-approval-card > div:last-child {
+    width: 100% !important;
+    justify-content: flex-start !important;
+    margin-top: 0.5rem !important;
+  }
+}
+
+
+
+
+

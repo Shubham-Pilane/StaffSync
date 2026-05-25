@@ -78,7 +78,7 @@ const SuperAdminDashboard = () => {
         <StatCard icon={<Activity />} label="Active Users" value={stats.activeUsers} color="#8b5cf6" />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '1.5rem' }}>
+      <div className="grid-responsive-2">
         <div className="card">
           <div style={{ marginBottom: '2rem' }}>
             <h3 style={{ fontWeight: 700, fontSize: '1.1rem', color: '#1e293b' }}>Revenue Performance</h3>

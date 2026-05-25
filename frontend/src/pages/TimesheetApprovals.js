@@ -178,7 +178,7 @@ const TimesheetApprovals = () => {
           zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem'
         }}>
           <div className="animate-scale-in" style={{
-            background: '#fff', borderRadius: '28px', width: '100%', maxWidth: '900px', maxHeight: '90vh',
+            background: '#fff', borderRadius: '28px', width: '94%', maxWidth: '900px', maxHeight: '90vh',
             display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 25px 70px rgba(0,0,0,0.3)'
           }}>
             {/* Modal Header */}
@@ -201,8 +201,9 @@ const TimesheetApprovals = () => {
             </div>
 
             {/* Modal Content - Table */}
-            <div style={{ padding: '2rem 2.5rem', overflowY: 'auto', flex: 1 }}>
-              <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 0.75rem' }}>
+            <div style={{ padding: '1rem 1.5rem', overflowY: 'auto', flex: 1 }}>
+              <div className="table-container" style={{ border: 'none', boxShadow: 'none' }}>
+                <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 0.75rem', minWidth: '600px' }}>
                 <thead style={{ position: 'sticky', top: 0, background: '#fff', zIndex: 10 }}>
                   <tr>
                     <th style={{ textAlign: 'left', padding: '0 1rem 0.75rem 0', color: '#94a3b8', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' }}>Date / Project</th>
@@ -241,6 +242,7 @@ const TimesheetApprovals = () => {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
 
             {/* Modal Footer - Actions */}
@@ -259,7 +261,7 @@ const TimesheetApprovals = () => {
                       />
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '1rem' }}>
+                  <div className="flex-responsive" style={{ gap: '1rem' }}>
                     <button 
                       onClick={() => handleBatchAction('approved')}
                       disabled={loadingAction}

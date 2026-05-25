@@ -2,11 +2,11 @@ import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Building2, Calendar, ClipboardCheck, 
-  Hourglass, LogOut, Settings, UserCircle, Briefcase, Activity
+  Hourglass, LogOut, Settings, UserCircle, Briefcase, Activity, X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen, setIsOpen }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -51,7 +51,7 @@ const Sidebar = () => {
   const currentMenu = menuItems[user?.role] || [];
 
   return (
-    <div className="sidebar" style={{
+    <div className={`sidebar ${isOpen ? 'open' : ''}`} style={{
       width: 'var(--sidebar-width)',
       height: '100vh',
       background: '#0f172a',
@@ -64,28 +64,46 @@ const Sidebar = () => {
       zIndex: 100,
       borderRight: '1px solid #1e293b'
     }}>
-      <div className="logo" style={{ 
-        fontSize: '1.25rem', 
-        fontWeight: 800, 
-        color: 'white',
-        letterSpacing: '-0.02em',
-        marginBottom: '2.5rem',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.75rem'
-      }}>
-        <div style={{ 
-          background: 'var(--primary)', 
-          padding: '0.5rem', 
-          borderRadius: '8px',
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+        <div className="logo" style={{ 
+          fontSize: '1.25rem', 
+          fontWeight: 800, 
+          color: 'white',
+          letterSpacing: '-0.02em',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 4px 6px -1px rgba(79, 70, 229, 0.4)'
+          gap: '0.75rem'
         }}>
-          <Briefcase size={20} color="white" strokeWidth={3} />
+          <div style={{ 
+            background: 'var(--primary)', 
+            padding: '0.5rem', 
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 4px 6px -1px rgba(79, 70, 229, 0.4)'
+          }}>
+            <Briefcase size={20} color="white" strokeWidth={3} />
+          </div>
+          StaffSync
         </div>
-        StaffSync
+        <button 
+          onClick={() => setIsOpen(false)}
+          className="sidebar-close-btn"
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: '#94a3b8',
+            cursor: 'pointer',
+            padding: '0.25rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+          aria-label="Close Sidebar"
+        >
+          <X size={20} />
+        </button>
       </div>
 
       <nav style={{ flex: 1 }}>
@@ -94,6 +112,7 @@ const Sidebar = () => {
           <NavLink 
             key={item.path} 
             to={item.path}
+            onClick={() => setIsOpen && setIsOpen(false)}
             className={({ isActive }) => `btn btn-ghost ${isActive ? 'active' : ''}`}
             style={({ isActive }) => ({
               width: '100%',

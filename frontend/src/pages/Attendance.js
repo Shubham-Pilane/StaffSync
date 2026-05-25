@@ -115,18 +115,16 @@ const Attendance = () => {
     <div>
       {notification && <Toast {...notification} onClose={() => setNotification(null)} />}
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 style={{ fontSize: '2.5rem', fontWeight: 800, background: 'linear-gradient(to right, #1e293b, #64748b)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.03em' }}>
+          <h1 style={{ fontSize: 'clamp(1.75rem, 5vw, 2.5rem)', fontWeight: 800, background: 'linear-gradient(to right, #1e293b, #64748b)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.03em' }}>
             Daily Attendance
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', fontWeight: 500 }}>Log your hours with identity verification.</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: 'clamp(0.95rem, 3vw, 1.1rem)', fontWeight: 500 }}>Log your hours with identity verification.</p>
         </div>
       </div>
 
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: '1.2fr 1.8fr', 
+      <div className="grid-responsive-2" style={{ 
         gap: '2rem', 
         marginBottom: '3rem',
         opacity: showModal ? 0 : 1,
@@ -160,7 +158,7 @@ const Attendance = () => {
             display: 'flex', 
             gap: '0.5rem', 
             justifyContent: 'center', 
-            fontSize: '2.5rem', 
+            fontSize: 'clamp(1.5rem, 6vw, 2.5rem)', 
             fontWeight: 800, 
             fontFamily: 'monospace',
             fontVariantNumeric: 'tabular-nums',
@@ -169,7 +167,7 @@ const Attendance = () => {
           }}>
             {elapsed.split(':').map((unit, i) => (
               <React.Fragment key={i}>
-                <span style={{ 
+                <span className="mobile-timer-unit" style={{ 
                   background: '#f8fafc',
                   width: '72px',
                   height: '72px',

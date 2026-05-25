@@ -151,7 +151,7 @@ const Timesheets = () => {
       {notification && <Toast {...notification} onClose={() => setNotification(null)} />}
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1.25rem' }}>
         <div>
           <h1 style={{ fontSize: '1.875rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>My Timesheets</h1>
           <p style={{ color: '#64748b', marginTop: '0.25rem', fontWeight: 500 }}>Track your daily hours — hover any date to log time.</p>
@@ -185,13 +185,13 @@ const Timesheets = () => {
       </div>
 
       {/* Summary cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
+      <div className="grid-responsive-3" style={{ gap: '1rem', marginBottom: '2rem' }}>
         <SummaryCard label="Total Hours This Month" value={`${totalHrs.toFixed(1)} hrs`} color="#4f46e5" icon={<Clock size={20} />} />
         <SummaryCard label="Approved"  value={`${approvedHrs.toFixed(1)} hrs`} color="#10b981" icon={<CheckCircle size={20} />} />
         <SummaryCard label="Pending Approval" value={`${pendingHrs.toFixed(1)} hrs`} color="#f59e0b" icon={<AlertCircle size={20} />} />
       </div>
 
-      <div style={{ display: 'flex', gap: '2rem' }}>
+      <div className="flex-responsive" style={{ gap: '2rem' }}>
 
         {/* ── Calendar ─────────────────────────────────────────── */}
         <div className="card" style={{ flex: 2, padding: '1.75rem' }}>
@@ -211,15 +211,18 @@ const Timesheets = () => {
             </div>
           </div>
 
-          {/* Day headers */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: '2px' }}>
-            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
-              <div key={d} style={{ textAlign: 'center', fontSize: '0.72rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', padding: '0.5rem 0', letterSpacing: '0.05em' }}>{d}</div>
-            ))}
-          </div>
+          {/* Calendar responsive scroll container */}
+          <div className="table-container" style={{ border: 'none', borderRadius: 0, boxShadow: 'none', overflowY: 'hidden' }}>
+            <div style={{ minWidth: '700px' }}>
+              {/* Day headers */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: '2px' }}>
+                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
+                  <div key={d} style={{ textAlign: 'center', fontSize: '0.72rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', padding: '0.5rem 0', letterSpacing: '0.05em' }}>{d}</div>
+                ))}
+              </div>
 
-          {/* Calendar grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', background: '#f1f5f9', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+              {/* Calendar grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', background: '#f1f5f9', borderRadius: '12px', overflow: 'hidden', border: '1px solid #e2e8f0' }}>
             {calCells.map((cell, i) => {
               const dateKey  = cell.current ? formatDateKey(cell.day) : null;
               const logs     = dateKey ? (logsByDate[dateKey] || []) : [];
@@ -249,7 +252,6 @@ const Timesheets = () => {
                     <span style={{
                       fontWeight: isToday ? 800 : 600,
                       fontSize: '0.85rem',
-                      color: !cell.current ? '#cbd5e1' : isToday ? '#4f46e5' : isWeekend ? '#94a3b8' : '#1e293b',
                       background: isToday ? '#4f46e5' : 'transparent',
                       color: isToday ? 'white' : !cell.current ? '#cbd5e1' : isWeekend ? '#94a3b8' : '#1e293b',
                       width: isToday ? '24px' : 'auto',
@@ -304,11 +306,13 @@ const Timesheets = () => {
                 </div>
               );
             })}
+              </div>
+            </div>
           </div>
         </div>
 
         {/* ── Right panel: Recent logs ──────────────────────────── */}
-        <div style={{ width: '280px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div className="timesheets-right-col" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div className="card" style={{ padding: '1.5rem' }}>
             <h3 style={{ fontWeight: 800, fontSize: '1rem', color: '#1e293b', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <FileText size={16} color="#4f46e5" /> Recent Logs
