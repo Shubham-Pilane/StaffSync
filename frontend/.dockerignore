@@ -3,5 +3,4 @@ build
 .git
 .dockerignore
 Dockerfile
-nginx.conf
 npm-debug.log
