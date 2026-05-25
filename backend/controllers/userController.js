@@ -178,3 +178,50 @@ exports.getSubordinateStatuses = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+exports.updateEmployee = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, role, department, managerId, password } = req.body;
+    
+    // Find employee under the same company tenant to prevent unauthorized access
+    const employee = await User.findOne({ where: { id, companyId: req.user.companyId } });
+    if (!employee) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
+
+    const updateData = { name, email, role, department };
+    
+    // Handle manager ID constraints
+    if (managerId !== undefined) {
+      updateData.managerId = (managerId && managerId !== "" && managerId !== "null") ? parseInt(managerId) : null;
+    }
+    
+    // Handle password hashing if a new password has been set
+    if (password && password.trim() !== '') {
+      updateData.password = await bcrypt.hash(password, 8);
+    }
+
+    await employee.update(updateData);
+    res.json(employee);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+exports.deleteEmployee = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Find employee under the same company tenant to prevent unauthorized access
+    const employee = await User.findOne({ where: { id, companyId: req.user.companyId } });
+    if (!employee) {
+      return res.status(404).json({ error: 'Employee not found' });
+    }
+
+    await employee.destroy();
+    res.json({ success: true, message: 'Employee deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

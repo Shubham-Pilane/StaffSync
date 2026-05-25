@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Briefcase, Clock, Calendar, Users, FileText, 
   MapPin, CheckCircle, Smile, Bell, Search, PlusCircle,
-  MoreHorizontal, ChevronRight, Play, Square, UserCheck, MessageSquare, Coffee
+  MoreHorizontal, ChevronRight, Play, Square, UserCheck, MessageSquare, Coffee,
+  Camera
 } from 'lucide-react';
+import Webcam from 'react-webcam';
 import Attendance from './Attendance';
 import Timesheets from './Timesheets';
 import api, { BACKEND_URL } from '../services/api';
@@ -25,6 +27,54 @@ const MySpace = () => {
   const [team, setTeam] = useState([]);
   const [notification, setNotification] = useState(null);
   const [currentUser, setCurrentUser] = useState(user);
+
+  const [showCheckInModal, setShowCheckInModal] = useState(false);
+  const [loadingCheckIn, setLoadingCheckIn] = useState(false);
+  const webcamRef = useRef(null);
+
+  const handleDirectCheckIn = async () => {
+    setLoadingCheckIn(true);
+    try {
+      const imageSrc = webcamRef.current.getScreenshot();
+      if (!imageSrc) throw new Error('Could not capture selfie');
+
+      const position = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject);
+      });
+      const location = `${position.coords.latitude}, ${position.coords.longitude}`;
+
+      const blob = await (await fetch(imageSrc)).blob();
+      const formData = new FormData();
+      formData.append('selfie', blob, 'selfie.jpg');
+      formData.append('location', location);
+
+      const res = await api.post('/attendance/check-in', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      setActiveAttendance(res.data);
+      setShowCheckInModal(false);
+      await refreshAllData();
+      setNotification({ message: 'Checked in successfully!', type: 'success' });
+    } catch (err) {
+      console.error(err);
+      setNotification({ message: 'Verification failed. Please try again.', type: 'error' });
+    } finally {
+      setLoadingCheckIn(false);
+    }
+  };
+
+  const handleDirectCheckOut = async () => {
+    try {
+      await api.post('/attendance/check-out');
+      setActiveAttendance(null);
+      await refreshAllData();
+      setNotification({ message: 'Checked out successfully!', type: 'success' });
+    } catch (err) {
+      console.error(err);
+      setNotification({ message: 'Check-out failed', type: 'error' });
+    }
+  };
 
   const refreshAllData = async () => {
     try {
@@ -177,7 +227,7 @@ const MySpace = () => {
 
             {!activeAttendance ? (
               <button 
-                onClick={() => setActiveSubTab('Attendance')} 
+                onClick={() => setShowCheckInModal(true)} 
                 className="btn" 
                 style={{ width: '100%', background: 'white', border: '1px solid var(--success)', color: 'var(--success)', borderRadius: '12px' }}
               >
@@ -185,7 +235,7 @@ const MySpace = () => {
               </button>
             ) : (
               <button 
-                onClick={() => setActiveSubTab('Attendance')} 
+                onClick={handleDirectCheckOut} 
                 className="btn" 
                 style={{ width: '100%', background: 'white', border: '1px solid var(--error)', color: 'var(--error)', borderRadius: '12px' }}
               >
@@ -311,6 +361,79 @@ const MySpace = () => {
           </div>
         </div>
       </div>
+
+      {showCheckInModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.75)', 
+          backdropFilter: 'blur(12px)', 
+          zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          transition: 'all 0.3s ease',
+          willChange: 'backdrop-filter, background-color',
+          transform: 'translateZ(0)'
+        }}>
+          <div className="modal-solid animate-fade" style={{ 
+            width: '100%', 
+            maxWidth: '500px', 
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+            transform: 'translateZ(0)'
+          }}>
+            <h2 style={{ fontWeight: 800, fontSize: '1.5rem', marginBottom: '1rem', color: '#1e293b' }}>Attendance Verification</h2>
+            <p style={{ color: '#64748b', marginBottom: '2rem', fontWeight: 500 }}>Please ensure your face is clearly visible and location services are enabled.</p>
+            
+            <div style={{ 
+              borderRadius: '24px', 
+              overflow: 'hidden', 
+              background: '#000', 
+              marginBottom: '2rem',
+              aspectRatio: '4/3',
+              position: 'relative'
+            }}>
+              <Webcam 
+                ref={webcamRef} 
+                screenshotFormat="image/jpeg"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+              <div style={{ 
+                position: 'absolute', 
+                bottom: '1rem', 
+                left: '50%', 
+                transform: 'translateX(-50%)',
+                background: 'rgba(0,0,0,0.5)',
+                color: 'white',
+                padding: '0.5rem 1rem',
+                borderRadius: '100px',
+                fontSize: '0.8rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                <MapPin size={14} /> Fetching GPS Location...
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1.25rem' }}>
+              <button 
+                onClick={handleDirectCheckIn} 
+                disabled={loadingCheckIn}
+                className="btn btn-primary" 
+                style={{ flex: 1.5, justifyContent: 'center', borderRadius: '14px', padding: '1rem' }}
+              >
+                {loadingCheckIn ? 'Verifying...' : 'Capture & Check-in'}
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setShowCheckInModal(false)} 
+                className="btn btn-ghost" 
+                style={{ flex: 1, justifyContent: 'center', borderRadius: '14px', background: '#f1f5f9', color: '#475569' }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

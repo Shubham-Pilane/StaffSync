@@ -32,6 +32,8 @@ router.patch('/companies/:id/status', auth, checkRole(['SuperAdmin']), companyCo
 router.post('/employees', auth, checkRole(['HR']), userController.addEmployee);
 router.get('/employees', auth, checkRole(['HR', 'Manager']), userController.getEmployees);
 router.get('/managers', auth, checkRole(['HR', 'SuperAdmin']), userController.getManagers);
+router.put('/employees/:id', auth, checkRole(['HR']), userController.updateEmployee);
+router.delete('/employees/:id', auth, checkRole(['HR']), userController.deleteEmployee);
 router.post('/activity/heartbeat', auth, userController.updateActivityStatus);
 router.get('/activity/team', auth, checkRole(['Manager', 'HR']), userController.getSubordinateStatuses);
 router.get('/ai/employee/:userId', auth, checkRole(['Manager', 'HR']), aiController.getEmployeeInsights);
