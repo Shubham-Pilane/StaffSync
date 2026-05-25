@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import Attendance from './Attendance';
 import Timesheets from './Timesheets';
-import api from '../services/api';
+import api, { BACKEND_URL } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import Toast from '../components/Toast';
 
@@ -169,7 +169,7 @@ const MySpace = () => {
         <div className="myspace-left-col" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div className="modal-solid" style={{ textAlign: 'center', padding: '2rem', background: 'white' }}>
             <div style={{ width: '120px', height: '120px', borderRadius: '24px', margin: '-4rem auto 1.5rem', overflow: 'hidden', border: '5px solid white', boxShadow: 'var(--shadow-lg)' }}>
-              <img src={activeAttendance?.selfiePath ? `http://localhost:5000/${activeAttendance.selfiePath}` : `https://ui-avatars.com/api/?name=${user?.name}&background=8b5cf6&color=fff&size=200`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="profile" />
+              <img src={activeAttendance?.selfiePath ? `${BACKEND_URL}/${activeAttendance.selfiePath}` : `https://ui-avatars.com/api/?name=${user?.name}&background=8b5cf6&color=fff&size=200`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="profile" />
             </div>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a' }}>{user?.name}</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1rem' }}>{user?.role}</p>

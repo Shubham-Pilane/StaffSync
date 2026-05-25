@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Webcam from 'react-webcam';
 import { Camera, MapPin, Play, Square, CheckCircle, Clock } from 'lucide-react';
-import api from '../services/api';
+import api, { BACKEND_URL } from '../services/api';
 import Toast from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 
@@ -143,7 +143,7 @@ const Attendance = () => {
             boxShadow: 'var(--shadow-lg)'
           }}>
             {activeAttendance && activeAttendance.selfiePath ? (
-              <img src={`http://localhost:5000/${activeAttendance.selfiePath}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img src={`${BACKEND_URL}/${activeAttendance.selfiePath}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
               <div style={{ width: '100%', height: '100%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Camera size={48} color="#94a3b8" />
