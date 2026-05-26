@@ -44,19 +44,50 @@ const AttendanceReports = () => {
               </tr>
             </thead>
             <tbody>
-              {reports.map((emp, i) => (
-                <tr key={emp.id}>
-                  <td>
-                    <div style={{ fontWeight: 600 }}>{emp.name}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{emp.department}</div>
-                  </td>
-                  <td><span className="badge badge-success">Present</span></td>
-                  <td>09:00 AM</td>
-                  <td>06:00 PM</td>
-                  <td>9.0 hrs</td>
-                  <td><span style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem' }}><CheckCircle size={12} /> Verified</span></td>
-                </tr>
-              ))}
+              {reports.map((emp) => {
+                const attendances = emp.Attendances || [];
+                const latest = attendances.length > 0 ? [...attendances].sort((a, b) => new Date(b.checkIn) - new Date(a.checkIn))[0] : null;
+
+                const isToday = latest ? new Date(latest.checkIn).toDateString() === new Date().toDateString() : false;
+
+                const status = isToday ? "Present" : "Absent";
+                const checkInTime = latest && isToday ? new Date(latest.checkIn).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "-";
+                const checkOutTime = latest && isToday ? (latest.checkOut ? new Date(latest.checkOut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Active") : "-";
+                const totalHrs = latest && isToday ? (latest.checkOut ? `${latest.totalHours ? latest.totalHours.toFixed(1) : '0.0'} hrs` : "In Progress") : "-";
+                const isVerified = latest && isToday && latest.selfiePath;
+
+                return (
+                  <tr key={emp.id}>
+                    <td>
+                      <div style={{ fontWeight: 600 }}>{emp.name}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{emp.department || "No Dept"}</div>
+                    </td>
+                    <td>
+                      <span className={`badge ${status === 'Present' ? 'badge-success' : ''}`} style={status === 'Absent' ? { background: '#fee2e2', color: '#ef4444', border: 'none' } : {}}>
+                        {status}
+                      </span>
+                    </td>
+                    <td>{checkInTime}</td>
+                    <td>{checkOutTime}</td>
+                    <td style={{ fontWeight: status === 'Present' ? 700 : 400 }}>{totalHrs}</td>
+                    <td>
+                      {status === 'Present' ? (
+                        isVerified ? (
+                          <span style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 600 }}>
+                            <CheckCircle size={12} /> Verified
+                          </span>
+                        ) : (
+                          <span style={{ color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', fontWeight: 600 }}>
+                            ⚠️ Pending
+                          </span>
+                        )
+                      ) : (
+                        <span style={{ color: '#94a3b8', fontSize: '0.75rem' }}>-</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

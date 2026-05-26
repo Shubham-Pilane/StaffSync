@@ -1,4 +1,4 @@
-const { Leave, Timesheet, User } = require('../models');
+const { Leave, Timesheet, User, Holiday, Project } = require('../models');
 const { Op } = require('sequelize');
 const emailService = require('../services/emailService');
 
@@ -227,6 +227,162 @@ exports.submitDraftTimesheets = async (req, res) => {
       }
     );
     res.json({ message: `${updatedCount} timesheets submitted for approval.`, updatedCount });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Holiday Controllers
+exports.getHolidays = async (req, res) => {
+  try {
+    const holidays = await Holiday.findAll({
+      where: { companyId: req.user.companyId },
+      order: [['date', 'ASC']]
+    });
+    res.json(holidays);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.createHoliday = async (req, res) => {
+  try {
+    const { name, date } = req.body;
+    const holiday = await Holiday.create({
+      name,
+      date,
+      companyId: req.user.companyId
+    });
+    res.status(201).json(holiday);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+exports.deleteHoliday = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const holiday = await Holiday.findOne({ where: { id, companyId: req.user.companyId } });
+    if (!holiday) return res.status(404).json({ error: 'Holiday not found' });
+    await holiday.destroy();
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// HR Direct Approved Leave Recording
+exports.createHrLeave = async (req, res) => {
+  try {
+    const { userId, type, startDate, endDate, reason } = req.body;
+
+    // Security verification to ensure employee belongs to the same company
+    const employee = await User.findOne({ where: { id: userId, companyId: req.user.companyId } });
+    if (!employee) {
+      return res.status(403).json({ error: 'Access Denied: Employee does not belong to your company.' });
+    }
+
+    const leave = await Leave.create({
+      userId,
+      type,
+      startDate,
+      endDate,
+      reason: reason || 'Added by HR',
+      status: 'approved',
+      managerId: req.user.id
+    });
+    res.status(201).json(leave);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// Approved Leaves for Company Calendar
+exports.getCalendarLeaves = async (req, res) => {
+  try {
+    const leaves = await Leave.findAll({
+      where: { status: 'approved' },
+      include: [{ model: User, attributes: ['name', 'companyId'] }]
+    });
+    const filteredLeaves = leaves.filter(l => l.User && l.User.companyId === req.user.companyId);
+    res.json(filteredLeaves);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Project Controllers
+exports.getProjects = async (req, res) => {
+  try {
+    if (req.user.role === 'Employee') {
+      const projects = await Project.findAll({
+        where: { companyId: req.user.companyId },
+        include: [{
+          model: User,
+          as: 'Employees',
+          where: { id: req.user.id },
+          attributes: []
+        }]
+      });
+      res.json(projects);
+    } else {
+      const projects = await Project.findAll({
+        where: { companyId: req.user.companyId },
+        include: [{
+          model: User,
+          as: 'Employees',
+          attributes: ['id', 'name', 'email']
+        }]
+      });
+      res.json(projects);
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.createProject = async (req, res) => {
+  try {
+    const { name, jobName, assignedEmployeeIds } = req.body;
+    const project = await Project.create({
+      name,
+      jobName,
+      companyId: req.user.companyId,
+      managerId: req.user.id
+    });
+
+    if (assignedEmployeeIds && assignedEmployeeIds.length > 0) {
+      const employees = await User.findAll({
+        where: {
+          id: assignedEmployeeIds,
+          companyId: req.user.companyId
+        }
+      });
+      await project.setEmployees(employees);
+    }
+
+    const createdProject = await Project.findByPk(project.id, {
+      include: [{
+        model: User,
+        as: 'Employees',
+        attributes: ['id', 'name', 'email']
+      }]
+    });
+    res.status(201).json(createdProject);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+exports.deleteProject = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const project = await Project.findOne({
+      where: { id, companyId: req.user.companyId }
+    });
+    if (!project) return res.status(404).json({ error: 'Project not found' });
+    await project.destroy();
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

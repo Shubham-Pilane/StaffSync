@@ -76,7 +76,10 @@ exports.getEmployees = async (req, res) => {
   try {
     const employees = await User.findAll({
       where: { companyId: req.user.companyId },
-      include: [{ as: 'Manager', model: User, attributes: ['name'] }]
+      include: [
+        { as: 'Manager', model: User, attributes: ['name'] },
+        { model: Attendance }
+      ]
     });
     res.json(employees);
   } catch (error) {

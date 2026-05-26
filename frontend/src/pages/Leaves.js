@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { 
   Plus, Sun, Stethoscope, Coffee, Calendar, Clock, 
   CheckCircle, XCircle, AlertCircle, ChevronRight, X,
-  Send, FileText, TrendingUp
+  Send, FileText, TrendingUp, Trash
 } from 'lucide-react';
 import api from '../services/api';
 import Toast from '../components/Toast';
+import { useAuth } from '../context/AuthContext';
 
 const LEAVE_TYPES = [
   { label: 'Annual Leave', value: 'Annual', icon: Sun, color: '#f59e0b', bg: '#fef3c7', total: 18 },
@@ -20,6 +21,8 @@ const statusConfig = {
 };
 
 const Leaves = () => {
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState('requests');
   const [leaves, setLeaves]           = useState([]);
   const [showModal, setShowModal]     = useState(false);
   const [notification, setNotification] = useState(null);
@@ -30,6 +33,14 @@ const Leaves = () => {
   });
   const [limits, setLimits]           = useState({ annualLeaveLimit: 18, sickLeaveLimit: 12, casualLeaveLimit: 6 });
 
+  const [holidays, setHolidays] = useState([]);
+  const [calendarLeaves, setCalendarLeaves] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [showHrLeaveModal, setShowHrLeaveModal] = useState(false);
+  const [hrLeaveData, setHrLeaveData] = useState({ userId: '', type: 'Annual', startDate: '', endDate: '', reason: '' });
+  const [holidayData, setHolidayData] = useState({ name: '', date: '' });
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+
   const fetchLeaves = async () => {
     try {
       const res = await api.get('/leaves/my');
@@ -38,7 +49,75 @@ const Leaves = () => {
     } catch (err) { console.error(err); }
   };
 
-  useEffect(() => { fetchLeaves(); }, []);
+  const fetchHolidays = async () => {
+    try {
+      const res = await api.get('/holidays');
+      setHolidays(res.data);
+    } catch (err) { console.error(err); }
+  };
+
+  const fetchCalendarLeaves = async () => {
+    try {
+      const res = await api.get('/leaves/calendar');
+      setCalendarLeaves(res.data);
+    } catch (err) { console.error(err); }
+  };
+
+  const fetchEmployees = async () => {
+    try {
+      const res = await api.get('/employees');
+      setEmployees(res.data);
+    } catch (err) { console.error(err); }
+  };
+
+  useEffect(() => {
+    fetchLeaves();
+    fetchHolidays();
+    fetchCalendarLeaves();
+    if (user?.role === 'HR') {
+      fetchEmployees();
+    }
+  }, [user]);
+
+  const handleCreateHoliday = async (e) => {
+    e.preventDefault();
+    if (!holidayData.name || !holidayData.date) return;
+    try {
+      await api.post('/holidays', holidayData);
+      setHolidayData({ name: '', date: '' });
+      fetchHolidays();
+      setNotification({ message: 'Holiday created successfully!', type: 'success' });
+    } catch (err) {
+      setNotification({ message: 'Failed to create holiday', type: 'error' });
+    }
+  };
+
+  const handleDeleteHoliday = async (id) => {
+    try {
+      await api.delete(`/holidays/${id}`);
+      fetchHolidays();
+      setNotification({ message: 'Holiday removed successfully!', type: 'success' });
+    } catch (err) {
+      setNotification({ message: 'Failed to remove holiday', type: 'error' });
+    }
+  };
+
+  const handleCreateHrLeave = async (e) => {
+    e.preventDefault();
+    if (!hrLeaveData.userId || !hrLeaveData.startDate || !hrLeaveData.endDate) {
+      setNotification({ message: 'Please fill all fields', type: 'error' });
+      return;
+    }
+    try {
+      await api.post('/leaves/hr', hrLeaveData);
+      setShowHrLeaveModal(false);
+      setHrLeaveData({ userId: '', type: 'Annual', startDate: '', endDate: '', reason: '' });
+      fetchCalendarLeaves();
+      setNotification({ message: 'Leave recorded successfully!', type: 'success' });
+    } catch (err) {
+      setNotification({ message: 'Failed to record leave', type: 'error' });
+    }
+  };
 
   // Calculate used days per type
   const getUsedDays = (type) => {
@@ -105,152 +184,436 @@ const Leaves = () => {
         </button>
       </div>
 
-      {/* Leave Balance Cards */}
-      <div className="grid-responsive-3" style={{ marginBottom: '2.5rem' }}>
-        {LEAVE_TYPES.map(({ label, value, icon: Icon, color, bg, total }) => {
-          const limitKey = `${value.toLowerCase()}LeaveLimit`;
-          const currentLimit = limits[limitKey] || total;
-          const used      = getUsedDays(value);
-          const remaining = currentLimit - used;
-          const pct       = Math.min((used / currentLimit) * 100, 100);
-          return (
-            <div key={value} className="card" style={{ padding: '1.75rem', border: `1px solid ${color}22` }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
-                <div style={{ background: bg, color, width: '44px', height: '44px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon size={22} />
-                </div>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color, background: bg, padding: '0.25rem 0.75rem', borderRadius: '100px' }}>
-                  {remaining} left
-                </span>
-              </div>
-              <div style={{ fontWeight: 800, fontSize: '1.75rem', color: '#0f172a', lineHeight: 1 }}>{remaining}</div>
-              <div style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: 600, marginBottom: '1.25rem' }}>{label}</div>
-              {/* Progress bar */}
-              <div style={{ height: '6px', background: '#f1f5f9', borderRadius: '100px', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: '100px', transition: 'width 0.6s ease' }} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>
-                <span>{used} used</span>
-                <span>{currentLimit} total</span>
-              </div>
-            </div>
-          );
-        })}
+      {/* Navigation Sub-Tabs */}
+      <div className="card" style={{ padding: '0.5rem 1rem', background: 'white', marginBottom: '2rem', display: 'flex', gap: '1rem', overflowX: 'auto', border: '1px solid #f1f5f9' }}>
+        <button 
+          onClick={() => setActiveTab('requests')} 
+          className="btn btn-ghost" 
+          style={{ 
+            padding: '0.5rem 1rem', 
+            color: activeTab === 'requests' ? 'var(--primary)' : '#64748b',
+            background: activeTab === 'requests' ? '#f5f3ff' : 'transparent',
+            borderRadius: '10px',
+            fontWeight: 700,
+            fontSize: '0.85rem'
+          }}
+        >
+          My Requests
+        </button>
+        <button 
+          onClick={() => setActiveTab('calendar')} 
+          className="btn btn-ghost" 
+          style={{ 
+            padding: '0.5rem 1rem', 
+            color: activeTab === 'calendar' ? 'var(--primary)' : '#64748b',
+            background: activeTab === 'calendar' ? '#f5f3ff' : 'transparent',
+            borderRadius: '10px',
+            fontWeight: 700,
+            fontSize: '0.85rem'
+          }}
+        >
+          Company Calendar
+        </button>
+        {user?.role === 'HR' && (
+          <button 
+            onClick={() => setActiveTab('holidays')} 
+            className="btn btn-ghost" 
+            style={{ 
+              padding: '0.5rem 1rem', 
+              color: activeTab === 'holidays' ? 'var(--primary)' : '#64748b',
+              background: activeTab === 'holidays' ? '#f5f3ff' : 'transparent',
+              borderRadius: '10px',
+              fontWeight: 700,
+              fontSize: '0.85rem'
+            }}
+          >
+            Manage Holidays
+          </button>
+        )}
       </div>
 
-      {/* History Section */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        {/* Card Header */}
-        <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <FileText size={20} color="#4f46e5" />
-            <h2 style={{ fontWeight: 800, color: '#1e293b', fontSize: '1.05rem' }}>Leave History</h2>
-            {pendingCount > 0 && (
-              <span style={{ background: '#fef3c7', color: '#d97706', fontSize: '0.75rem', fontWeight: 700, padding: '0.2rem 0.6rem', borderRadius: '100px' }}>
-                {pendingCount} pending
-              </span>
-            )}
+      {/* TAB CONTENT: Requests */}
+      {activeTab === 'requests' && (
+        <>
+          {/* Leave Balance Cards */}
+          <div className="grid-responsive-3" style={{ marginBottom: '2.5rem' }}>
+            {LEAVE_TYPES.map(({ label, value, icon: Icon, color, bg, total }) => {
+              const limitKey = `${value.toLowerCase()}LeaveLimit`;
+              const currentLimit = limits[limitKey] || total;
+              const used      = getUsedDays(value);
+              const remaining = currentLimit - used;
+              const pct       = Math.min((used / currentLimit) * 100, 100);
+              return (
+                <div key={value} className="card" style={{ padding: '1.75rem', border: `1px solid ${color}22` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+                    <div style={{ background: bg, color, width: '44px', height: '44px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon size={22} />
+                    </div>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color, background: bg, padding: '0.25rem 0.75rem', borderRadius: '100px' }}>
+                      {remaining} left
+                    </span>
+                  </div>
+                  <div style={{ fontWeight: 800, fontSize: '1.75rem', color: '#0f172a', lineHeight: 1 }}>{remaining}</div>
+                  <div style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: 600, marginBottom: '1.25rem' }}>{label}</div>
+                  {/* Progress bar */}
+                  <div style={{ height: '6px', background: '#f1f5f9', borderRadius: '100px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: '100px', transition: 'width 0.6s ease' }} />
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem', fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>
+                    <span>{used} used</span>
+                    <span>{currentLimit} total</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          {/* Filter pills */}
-          <div className="scrollable-tabs" style={{ display: 'flex', gap: '0.5rem' }}>
-            {['all', 'pending', 'approved', 'rejected'].map(f => (
-              <button
-                key={f}
-                onClick={() => setActiveFilter(f)}
-                style={{
-                  padding: '0.4rem 1rem',
-                  borderRadius: '100px',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontWeight: 700,
-                  fontSize: '0.78rem',
-                  textTransform: 'capitalize',
-                  background: activeFilter === f ? '#4f46e5' : '#f8fafc',
-                  color: activeFilter === f ? 'white' : '#64748b',
-                  transition: 'all 0.15s ease'
-                }}
+
+          {/* History Section */}
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            {/* Card Header */}
+            <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <FileText size={20} color="#4f46e5" />
+                <h2 style={{ fontWeight: 800, color: '#1e293b', fontSize: '1.05rem' }}>Leave History</h2>
+                {pendingCount > 0 && (
+                  <span style={{ background: '#fef3c7', color: '#d97706', fontSize: '0.75rem', fontWeight: 700, padding: '0.2rem 0.6rem', borderRadius: '100px' }}>
+                    {pendingCount} pending
+                  </span>
+                )}
+              </div>
+              {/* Filter pills */}
+              <div className="scrollable-tabs" style={{ display: 'flex', gap: '0.5rem' }}>
+                {['all', 'pending', 'approved', 'rejected'].map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setActiveFilter(f)}
+                    style={{
+                      padding: '0.4rem 1rem',
+                      borderRadius: '100px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      fontSize: '0.78rem',
+                      textTransform: 'capitalize',
+                      background: activeFilter === f ? '#4f46e5' : '#f8fafc',
+                      color: activeFilter === f ? 'white' : '#64748b',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Leave Cards List */}
+            <div style={{ padding: '1rem 1.5rem' }}>
+              {filtered.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#94a3b8' }}>
+                  <Calendar size={52} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                  <p style={{ fontWeight: 700, fontSize: '1rem' }}>No leave requests found</p>
+                  <p style={{ fontSize: '0.85rem', marginTop: '0.25rem' }}>Click "Apply for Leave" to submit your first request.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.5rem 0' }}>
+                  {filtered.map(leave => {
+                    const StatusIcon = statusConfig[leave.status]?.icon || AlertCircle;
+                    const sColor     = statusConfig[leave.status]?.color || '#94a3b8';
+                    const sBg        = statusConfig[leave.status]?.bg    || '#f8fafc';
+                    const typeInfo   = LEAVE_TYPES.find(t => t.value === leave.type) || LEAVE_TYPES[0];
+                    const TypeIcon   = typeInfo.icon;
+
+                    return (
+                      <div key={leave.id} className="leave-history-item" style={{
+                        padding: '1.25rem 1rem',
+                        borderRadius: '16px',
+                        border: '1px solid #f1f5f9',
+                        background: '#fff',
+                        transition: 'box-shadow 0.15s ease',
+                      }}>
+                        {/* Type icon */}
+                        <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: typeInfo.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <TypeIcon size={20} color={typeInfo.color} />
+                        </div>
+
+                        {/* Details */}
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.35rem' }}>
+                            <span style={{ fontWeight: 800, color: '#1e293b', fontSize: '0.95rem' }}>{leave.type} Leave</span>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: typeInfo.color, background: typeInfo.bg, padding: '0.15rem 0.6rem', borderRadius: '100px' }}>
+                              {getDuration(leave)}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+                            <Calendar size={13} />
+                            {new Date(leave.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                            {' – '}
+                            {new Date(leave.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </div>
+                          {leave.reason && (
+                            <p style={{ color: '#94a3b8', fontSize: '0.8rem', fontStyle: 'italic', margin: 0 }}>
+                              "{leave.reason}"
+                            </p>
+                          )}
+                          {leave.managerComment && (
+                            <p style={{ color: '#334155', fontSize: '0.8rem', fontWeight: 600, marginTop: '0.4rem', background: '#f8fafc', padding: '0.5rem 0.75rem', borderRadius: '8px', borderLeft: '3px solid #94a3b8', display: 'flex', gap: '0.5rem' }}>
+                              <span style={{color: '#94a3b8'}}>Manager:</span> "{leave.managerComment}"
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Status badge */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.35rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: sBg, color: sColor, padding: '0.4rem 0.85rem', borderRadius: '100px', fontWeight: 700, fontSize: '0.78rem' }}>
+                            <StatusIcon size={13} />
+                            {statusConfig[leave.status]?.label}
+                          </div>
+                          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                            {new Date(leave.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* TAB CONTENT: Company Calendar */}
+      {activeTab === 'calendar' && (
+        <div className="card" style={{ padding: '2rem' }}>
+          {/* Month Navigation */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+            <div>
+              <h3 style={{ fontWeight: 800, fontSize: '1.4rem', color: '#1e293b', lineHeight: 1 }}>
+                {["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][currentMonth.getMonth()]} {currentMonth.getFullYear()}
+              </h3>
+              {user?.role === 'HR' && (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.35rem' }}>
+                  💡 HR Tip: Click on any active date cell to directly record and auto-approve employee leaves.
+                </p>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button 
+                type="button" 
+                onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))} 
+                className="btn btn-ghost" 
+                style={{ border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.5rem 1rem' }}
               >
-                {f}
+                Prev
               </button>
+              <button 
+                type="button" 
+                onClick={() => setCurrentMonth(new Date())} 
+                className="btn btn-ghost" 
+                style={{ border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.5rem 1rem', background: '#f8fafc' }}
+              >
+                Today
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))} 
+                className="btn btn-ghost" 
+                style={{ border: '1px solid #e2e8f0', borderRadius: '10px', padding: '0.5rem 1rem' }}
+              >
+                Next
+              </button>
+            </div>
+          </div>
+
+          {/* Weekday headers */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', textAlign: 'center', marginBottom: '12px' }}>
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+              <div key={d} style={{ fontWeight: 700, fontSize: '0.8rem', color: '#94a3b8', textTransform: 'uppercase' }}>
+                {d}
+              </div>
             ))}
           </div>
-        </div>
 
-        {/* Leave Cards List */}
-        <div style={{ padding: '1rem 1.5rem' }}>
-          {filtered.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '4rem 2rem', color: '#94a3b8' }}>
-              <Calendar size={52} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-              <p style={{ fontWeight: 700, fontSize: '1rem' }}>No leave requests found</p>
-              <p style={{ fontSize: '0.85rem', marginTop: '0.25rem' }}>Click "Apply for Leave" to submit your first request.</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.5rem 0' }}>
-              {filtered.map(leave => {
-                const StatusIcon = statusConfig[leave.status]?.icon || AlertCircle;
-                const sColor     = statusConfig[leave.status]?.color || '#94a3b8';
-                const sBg        = statusConfig[leave.status]?.bg    || '#f8fafc';
-                const typeInfo   = LEAVE_TYPES.find(t => t.value === leave.type) || LEAVE_TYPES[0];
-                const TypeIcon   = typeInfo.icon;
+          {/* Monthly Days grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px' }}>
+            {(() => {
+              const year = currentMonth.getFullYear();
+              const month = currentMonth.getMonth();
+              const firstDay = new Date(year, month, 1).getDay();
+              const totalDays = new Date(year, month + 1, 0).getDate();
+              const prevTotalDays = new Date(year, month, 0).getDate();
+              const cells = [];
+
+              for (let i = firstDay - 1; i >= 0; i--) {
+                cells.push({ day: prevTotalDays - i, isCurrent: false, dateStr: new Date(year, month - 1, prevTotalDays - i).toISOString().split('T')[0] });
+              }
+              for (let i = 1; i <= totalDays; i++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                cells.push({ day: i, isCurrent: true, dateStr });
+              }
+              const remaining = 42 - cells.length;
+              for (let i = 1; i <= remaining; i++) {
+                cells.push({ day: i, isCurrent: false, dateStr: new Date(year, month + 1, i).toISOString().split('T')[0] });
+              }
+
+              return cells.map((cell, idx) => {
+                const dayHolidays = holidays.filter(h => h.date === cell.dateStr);
+                const dayLeaves = calendarLeaves.filter(l => cell.dateStr >= l.startDate && cell.dateStr <= l.endDate);
 
                 return (
-                  <div key={leave.id} className="leave-history-item" style={{
-                    padding: '1.25rem 1rem',
-                    borderRadius: '16px',
-                    border: '1px solid #f1f5f9',
-                    background: '#fff',
-                    transition: 'box-shadow 0.15s ease',
-                  }}>
-                    {/* Type icon */}
-                    <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: typeInfo.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <TypeIcon size={20} color={typeInfo.color} />
-                    </div>
+                  <div 
+                    key={idx} 
+                    onClick={() => {
+                      if (user?.role === 'HR' && cell.isCurrent) {
+                        setHrLeaveData({ ...hrLeaveData, startDate: cell.dateStr, endDate: cell.dateStr });
+                        setShowHrLeaveModal(true);
+                      }
+                    }}
+                    style={{
+                      minHeight: '100px',
+                      border: '1.5px solid #f1f5f9',
+                      borderRadius: '16px',
+                      padding: '0.6rem 0.5rem',
+                      background: cell.isCurrent ? 'white' : '#f8fafc',
+                      cursor: user?.role === 'HR' && cell.isCurrent ? 'pointer' : 'default',
+                      opacity: cell.isCurrent ? 1 : 0.4,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px',
+                      transition: 'all 0.15s ease',
+                      position: 'relative'
+                    }}
+                    className={`calendar-cell ${user?.role === 'HR' && cell.isCurrent ? 'hover-cell' : ''}`}
+                  >
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: cell.isCurrent ? '#1e293b' : '#94a3b8' }}>
+                      {cell.day}
+                    </span>
 
-                    {/* Details */}
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.35rem' }}>
-                        <span style={{ fontWeight: 800, color: '#1e293b', fontSize: '0.95rem' }}>{leave.type} Leave</span>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: typeInfo.color, background: typeInfo.bg, padding: '0.15rem 0.6rem', borderRadius: '100px' }}>
-                          {getDuration(leave)}
-                        </span>
+                    {/* Holidays */}
+                    {cell.isCurrent && dayHolidays.map(h => (
+                      <div 
+                        key={h.id} 
+                        style={{ 
+                          fontSize: '0.68rem', fontWeight: 700, background: '#fef3c7', color: '#d97706', 
+                          padding: '0.2rem 0.4rem', borderRadius: '6px', whiteSpace: 'nowrap',
+                          overflow: 'hidden', textOverflow: 'ellipsis', border: '1px solid #fde68a'
+                        }}
+                        title={h.name}
+                      >
+                        🎉 {h.name}
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-                        <Calendar size={13} />
-                        {new Date(leave.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                        {' – '}
-                        {new Date(leave.endDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </div>
-                      {leave.reason && (
-                        <p style={{ color: '#94a3b8', fontSize: '0.8rem', fontStyle: 'italic', margin: 0 }}>
-                          "{leave.reason}"
-                        </p>
-                      )}
-                      {leave.managerComment && (
-                        <p style={{ color: '#334155', fontSize: '0.8rem', fontWeight: 600, marginTop: '0.4rem', background: '#f8fafc', padding: '0.5rem 0.75rem', borderRadius: '8px', borderLeft: '3px solid #94a3b8', display: 'flex', gap: '0.5rem' }}>
-                          <span style={{color: '#94a3b8'}}>Manager:</span> "{leave.managerComment}"
-                        </p>
-                      )}
-                    </div>
+                    ))}
 
-                    {/* Status badge */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.35rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: sBg, color: sColor, padding: '0.4rem 0.85rem', borderRadius: '100px', fontWeight: 700, fontSize: '0.78rem' }}>
-                        <StatusIcon size={13} />
-                        {statusConfig[leave.status]?.label}
+                    {/* Leaves */}
+                    {cell.isCurrent && dayLeaves.map(l => (
+                      <div 
+                        key={l.id} 
+                        style={{ 
+                          fontSize: '0.68rem', fontWeight: 700, background: '#eff6ff', color: '#3b82f6', 
+                          padding: '0.2rem 0.4rem', borderRadius: '6px', whiteSpace: 'nowrap',
+                          overflow: 'hidden', textOverflow: 'ellipsis', border: '1px solid #bfdbfe'
+                        }}
+                        title={`${l.User?.name} (${l.type})`}
+                      >
+                        👤 {l.User?.name}
                       </div>
-                      <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
-                        {new Date(leave.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                      </span>
-                    </div>
+                    ))}
                   </div>
                 );
-              })}
-            </div>
-          )}
+              });
+            })()}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Apply Leave Modal */}
+      {/* TAB CONTENT: Manage Holidays (HR Only) */}
+      {activeTab === 'holidays' && user?.role === 'HR' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '2rem', flexWrap: 'wrap' }}>
+          {/* Create Holiday Form */}
+          <div className="card" style={{ padding: '2rem', height: 'fit-content' }}>
+            <h3 style={{ fontWeight: 800, fontSize: '1.25rem', color: '#1e293b', marginBottom: '1.5rem' }}>
+              Add Public Holiday
+            </h3>
+            <form onSubmit={handleCreateHoliday}>
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', color: '#475569', marginBottom: '0.5rem' }}>
+                  Holiday Name
+                </label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. Christmas Day"
+                  value={holidayData.name}
+                  onChange={e => setHolidayData({ ...holidayData, name: e.target.value })}
+                  style={{ width: '100%', padding: '0.85rem 1rem', border: '1.5px solid #e2e8f0', borderRadius: '12px', outline: 'none', background: 'white' }}
+                  required 
+                />
+              </div>
+              <div style={{ marginBottom: '2rem' }}>
+                <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', color: '#475569', marginBottom: '0.5rem' }}>
+                  Date
+                </label>
+                <input 
+                  type="date"
+                  value={holidayData.date}
+                  onChange={e => setHolidayData({ ...holidayData, date: e.target.value })}
+                  style={{ width: '100%', padding: '0.85rem 1rem', border: '1.5px solid #e2e8f0', borderRadius: '12px', outline: 'none', background: 'white' }}
+                  required 
+                />
+              </div>
+              <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', borderRadius: '12px', padding: '0.85rem' }}>
+                Add Holiday
+              </button>
+            </form>
+          </div>
+
+          {/* Holidays Directory */}
+          <div className="card" style={{ padding: '2rem' }}>
+            <h3 style={{ fontWeight: 800, fontSize: '1.25rem', color: '#1e293b', marginBottom: '1.5rem' }}>
+              Holiday Directory
+            </h3>
+            {holidays.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#94a3b8' }}>
+                🎉 No holidays registered yet. Add one to see it in the calendar!
+              </div>
+            ) : (
+              <div className="table-container" style={{ border: 'none', boxShadow: 'none' }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Holiday</th>
+                      <th>Date</th>
+                      <th style={{ textAlign: 'center' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {holidays.map(h => (
+                      <tr key={h.id}>
+                        <td style={{ fontWeight: 700, color: '#1e293b' }}>{h.name}</td>
+                        <td>{new Date(h.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                        <td>
+                          <div style={{ display: 'flex', justifyContent: 'center' }}>
+                            <button 
+                              type="button"
+                              onClick={() => handleDeleteHoliday(h.id)} 
+                              className="btn btn-ghost" 
+                              style={{ padding: '0.4rem', border: '1px solid var(--border)', color: 'var(--error)', borderRadius: '8px' }}
+                              title="Delete Holiday"
+                            >
+                              <Trash size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Apply Leave Modal (Employee View) */}
       {showModal && (
         <div style={{
           position: 'fixed', inset: 0,
@@ -371,6 +734,128 @@ const Leaves = () => {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
+                  style={{ flex: 1, padding: '1rem', borderRadius: '14px', border: 'none', background: '#f1f5f9', color: '#475569', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* HR Direct Approved Leave Modal */}
+      {showHrLeaveModal && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(15, 23, 42, 0.5)', backdropFilter: 'blur(8px)',
+          zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
+        }}>
+          <div className="animate-fade" style={{
+            background: 'white', borderRadius: '24px', padding: '2.5rem',
+            width: '100%', maxWidth: '520px', boxShadow: '0 25px 50px rgba(0,0,0,0.15)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+              <div>
+                <h2 style={{ fontWeight: 800, fontSize: '1.5rem', color: '#0f172a' }}>Record Employee Leave</h2>
+                <p style={{ color: '#64748b', fontSize: '0.875rem', marginTop: '0.25rem' }}>As HR, directly record and auto-approve a leave on the calendar.</p>
+              </div>
+              <button onClick={() => setShowHrLeaveModal(false)} style={{ background: '#f1f5f9', border: 'none', borderRadius: '10px', width: '36px', height: '36px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={18} color="#64748b" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateHrLeave}>
+              {/* Select Employee */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', color: '#475569', marginBottom: '0.5rem' }}>
+                  Select Employee
+                </label>
+                <select 
+                  value={hrLeaveData.userId}
+                  onChange={e => setHrLeaveData({ ...hrLeaveData, userId: e.target.value })}
+                  style={{ width: '100%', padding: '0.85rem 1rem', border: '1.5px solid #e2e8f0', borderRadius: '12px', background: 'white' }}
+                  required
+                >
+                  <option value="">Select an employee...</option>
+                  {employees.map(emp => (
+                    <option key={emp.id} value={emp.id}>{emp.name} ({emp.role})</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Leave Type Selector */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', color: '#475569', marginBottom: '0.5rem' }}>
+                  Leave Type
+                </label>
+                <select 
+                  value={hrLeaveData.type}
+                  onChange={e => setHrLeaveData({ ...hrLeaveData, type: e.target.value })}
+                  style={{ width: '100%', padding: '0.85rem 1rem', border: '1.5px solid #e2e8f0', borderRadius: '12px', background: 'white' }}
+                  required
+                >
+                  <option value="Annual">Annual Leave</option>
+                  <option value="Sick">Sick Leave</option>
+                  <option value="Casual">Casual Leave</option>
+                </select>
+              </div>
+
+              {/* Date Range */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', color: '#475569', marginBottom: '0.5rem' }}>
+                    From
+                  </label>
+                  <input
+                    type="date"
+                    value={hrLeaveData.startDate}
+                    onChange={e => setHrLeaveData({ ...hrLeaveData, startDate: e.target.value })}
+                    style={{ width: '100%', padding: '0.85rem 1rem', border: '1.5px solid #e2e8f0', borderRadius: '12px', fontSize: '0.9rem', outline: 'none', background: 'white' }}
+                    required
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', color: '#475569', marginBottom: '0.5rem' }}>
+                    To
+                  </label>
+                  <input
+                    type="date"
+                    value={hrLeaveData.endDate}
+                    onChange={e => setHrLeaveData({ ...hrLeaveData, endDate: e.target.value })}
+                    min={hrLeaveData.startDate}
+                    style={{ width: '100%', padding: '0.85rem 1rem', border: '1.5px solid #e2e8f0', borderRadius: '12px', fontSize: '0.9rem', background: 'white' }}
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Reason */}
+              <div style={{ marginBottom: '2rem' }}>
+                <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', color: '#475569', marginBottom: '0.5rem' }}>
+                  Reason for Leave
+                </label>
+                <textarea
+                  value={hrLeaveData.reason}
+                  onChange={e => setHrLeaveData({ ...hrLeaveData, reason: e.target.value })}
+                  placeholder="Reason..."
+                  style={{ width: '100%', padding: '0.85rem 1rem', border: '1.5px solid #e2e8f0', borderRadius: '12px', minHeight: '80px', background: 'white', resize: 'vertical' }}
+                  required
+                />
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  style={{ flex: 2, justifyContent: 'center', borderRadius: '14px', padding: '1rem', fontWeight: 700 }}
+                >
+                  Record Leave
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowHrLeaveModal(false)}
                   style={{ flex: 1, padding: '1rem', borderRadius: '14px', border: 'none', background: '#f1f5f9', color: '#475569', fontWeight: 700, cursor: 'pointer' }}
                 >
                   Cancel

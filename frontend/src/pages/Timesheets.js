@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Clock, CheckCircle, Send, Plus, X, FileText, TrendingUp, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, CheckCircle, Send, Plus, X, FileText, TrendingUp, AlertCircle, Trash, Briefcase } from 'lucide-react';
 import api from '../services/api';
 import Toast from '../components/Toast';
+import { useAuth } from '../context/AuthContext';
 
 const Timesheets = () => {
+  const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState('logs'); // 'logs' or 'projects'
   const [currentDate, setCurrentDate]   = useState(new Date());
   const [timesheets, setTimesheets]     = useState([]);
   const [notification, setNotification] = useState(null);
@@ -17,6 +20,12 @@ const Timesheets = () => {
   });
   const [submittingApproval, setSubmittingApproval] = useState(false);
 
+  const [projects, setProjects] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [newProject, setNewProject] = useState({ name: '', jobName: '', assignedEmployeeIds: [] });
+  const [submittingProject, setSubmittingProject] = useState(false);
+
   const fetchTimesheets = async () => {
     try {
       const res = await api.get('/timesheets/my');
@@ -24,7 +33,58 @@ const Timesheets = () => {
     } catch (err) { console.error(err); }
   };
 
-  useEffect(() => { fetchTimesheets(); }, []);
+  const fetchProjects = async () => {
+    try {
+      const res = await api.get('/projects');
+      setProjects(res.data || []);
+    } catch (err) { console.error(err); }
+  };
+
+  const fetchEmployees = async () => {
+    try {
+      const res = await api.get('/employees');
+      setEmployees(res.data || []);
+    } catch (err) { console.error(err); }
+  };
+
+  useEffect(() => {
+    fetchTimesheets();
+    fetchProjects();
+    if (user?.role === 'Manager' || user?.role === 'HR') {
+      fetchEmployees();
+    }
+  }, [user]);
+
+  const handleCreateProject = async (e) => {
+    e.preventDefault();
+    if (!newProject.name.trim() || !newProject.jobName.trim()) {
+      setNotification({ message: 'Please fill out all fields.', type: 'error' });
+      return;
+    }
+    setSubmittingProject(true);
+    try {
+      await api.post('/projects', newProject);
+      setNewProject({ name: '', jobName: '', assignedEmployeeIds: [] });
+      setShowProjectModal(false);
+      fetchProjects();
+      setNotification({ message: 'Project created successfully!', type: 'success' });
+    } catch (err) {
+      setNotification({ message: err.response?.data?.error || 'Failed to create project.', type: 'error' });
+    } finally {
+      setSubmittingProject(false);
+    }
+  };
+
+  const handleDeleteProject = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this project?')) return;
+    try {
+      await api.delete(`/projects/${id}`);
+      fetchProjects();
+      setNotification({ message: 'Project deleted successfully!', type: 'success' });
+    } catch (err) {
+      setNotification({ message: 'Failed to delete project.', type: 'error' });
+    }
+  };
 
   // ── Calendar helpers ──────────────────────────────────────────
   const year  = currentDate.getFullYear();
@@ -153,36 +213,79 @@ const Timesheets = () => {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', flexWrap: 'wrap', gap: '1.25rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.875rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>My Timesheets</h1>
-          <p style={{ color: '#64748b', marginTop: '0.25rem', fontWeight: 500 }}>Track your daily hours — hover any date to log time.</p>
+          <h1 style={{ fontSize: '1.875rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
+            {activeTab === 'projects' ? 'Project Management' : 'My Timesheets'}
+          </h1>
+          <p style={{ color: '#64748b', marginTop: '0.25rem', fontWeight: 500 }}>
+            {activeTab === 'projects' ? 'Create projects, job names, and assign employee access rights.' : 'Track your daily hours — hover any date to log time.'}
+          </p>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button
-            onClick={() => openModal(todayStr)}
-            className="btn btn-primary"
-            style={{ borderRadius: '12px', padding: '0.75rem 1.5rem', fontWeight: 700 }}
-          >
-            <Plus size={18} /> Log Time
-          </button>
-          <button
-            onClick={handleSubmitForApproval}
-            disabled={submittingApproval}
-            className="btn"
+        {activeTab === 'logs' && (
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button
+              onClick={() => openModal(todayStr)}
+              className="btn btn-primary"
+              style={{ borderRadius: '12px', padding: '0.75rem 1.5rem', fontWeight: 700 }}
+            >
+              <Plus size={18} /> Log Time
+            </button>
+            <button
+              onClick={handleSubmitForApproval}
+              disabled={submittingApproval}
+              className="btn"
+              style={{ 
+                borderRadius: '12px', 
+                padding: '0.75rem 1.5rem', 
+                background: '#f1f5f9', 
+                color: '#1e293b', 
+                border: 'none', 
+                fontWeight: 700,
+                opacity: submittingApproval ? 0.7 : 1,
+                cursor: submittingApproval ? 'not-allowed' : 'pointer'
+              }}
+            >
+              <Send size={18} /> {submittingApproval ? 'Submitting...' : 'Submit for Approval'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Navigation Sub-Tabs */}
+      {(user?.role === 'Manager' || user?.role === 'HR') && (
+        <div className="card" style={{ padding: '0.5rem 1rem', background: 'white', marginBottom: '2rem', display: 'flex', gap: '1rem', overflowX: 'auto', border: '1px solid #f1f5f9' }}>
+          <button 
+            onClick={() => setActiveTab('logs')} 
+            className="btn btn-ghost" 
             style={{ 
-              borderRadius: '12px', 
-              padding: '0.75rem 1.5rem', 
-              background: '#f1f5f9', 
-              color: '#1e293b', 
-              border: 'none', 
+              padding: '0.5rem 1rem', 
+              color: activeTab === 'logs' ? 'var(--primary)' : '#64748b',
+              background: activeTab === 'logs' ? '#f5f3ff' : 'transparent',
+              borderRadius: '10px',
               fontWeight: 700,
-              opacity: submittingApproval ? 0.7 : 1,
-              cursor: submittingApproval ? 'not-allowed' : 'pointer'
+              fontSize: '0.85rem'
             }}
           >
-            <Send size={18} /> {submittingApproval ? 'Submitting...' : 'Submit for Approval'}
+            My Logs
+          </button>
+          <button 
+            onClick={() => setActiveTab('projects')} 
+            className="btn btn-ghost" 
+            style={{ 
+              padding: '0.5rem 1rem', 
+              color: activeTab === 'projects' ? 'var(--primary)' : '#64748b',
+              background: activeTab === 'projects' ? '#f5f3ff' : 'transparent',
+              borderRadius: '10px',
+              fontWeight: 700,
+              fontSize: '0.85rem'
+            }}
+          >
+            Manage Projects
           </button>
         </div>
-      </div>
+      )}
+
+      {activeTab === 'logs' && (
+        <>
 
       {/* Summary cards */}
       <div className="grid-responsive-3" style={{ gap: '1rem', marginBottom: '2rem' }}>
@@ -350,6 +453,222 @@ const Timesheets = () => {
           </div>
         </div>
       </div>
+      
+      </>
+      )}
+
+      {/* TAB CONTENT: Manage Projects (Manager/HR only) */}
+      {activeTab === 'projects' && (user?.role === 'Manager' || user?.role === 'HR') && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '2rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
+          
+          {/* Projects Directory Card */}
+          <div className="card" style={{ padding: '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h3 style={{ fontWeight: 800, fontSize: '1.25rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Briefcase size={20} color="var(--primary)" /> Project Directory
+              </h3>
+              <button 
+                onClick={() => {
+                  setNewProject({ name: '', jobName: '', assignedEmployeeIds: [] });
+                  setShowProjectModal(true);
+                }} 
+                className="btn btn-primary"
+                style={{ borderRadius: '10px', padding: '0.5rem 1rem', fontSize: '0.82rem', fontWeight: 700 }}
+              >
+                <Plus size={16} /> New Project
+              </button>
+            </div>
+
+            {projects.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '4rem 1rem', color: '#94a3b8' }}>
+                💼 No projects registered yet. Create one to assign to employees!
+              </div>
+            ) : (
+              <div className="table-container" style={{ border: 'none', boxShadow: 'none' }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Project</th>
+                      <th>Job Name</th>
+                      <th>Assigned Team</th>
+                      <th style={{ textAlign: 'center' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {projects.map(p => (
+                      <tr key={p.id}>
+                        <td style={{ fontWeight: 700, color: '#1e293b' }}>{p.name}</td>
+                        <td style={{ color: 'var(--text-muted)' }}>{p.jobName || '—'}</td>
+                        <td>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
+                            {p.Employees && p.Employees.length > 0 ? (
+                              p.Employees.map(emp => (
+                                <span 
+                                  key={emp.id} 
+                                  style={{
+                                    fontSize: '0.7rem', fontWeight: 700, background: '#f5f3ff', color: 'var(--primary)',
+                                    padding: '0.15rem 0.5rem', borderRadius: '100px', border: '1px solid #ddd6fe'
+                                  }}
+                                >
+                                  {emp.name}
+                                </span>
+                              ))
+                            ) : (
+                              <span style={{ fontSize: '0.75rem', color: '#cbd5e1', fontStyle: 'italic' }}>None</span>
+                            )}
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', justifyContent: 'center' }}>
+                            <button 
+                              type="button"
+                              onClick={() => handleDeleteProject(p.id)} 
+                              className="btn btn-ghost" 
+                              style={{ padding: '0.4rem', border: '1px solid var(--border)', color: 'var(--error)', borderRadius: '8px' }}
+                              title="Delete Project"
+                            >
+                              <Trash size={15} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Quick Guide Card */}
+          <div className="card" style={{ padding: '2rem', height: 'fit-content' }}>
+            <h3 style={{ fontWeight: 800, fontSize: '1.25rem', color: '#1e293b', marginBottom: '1.25rem' }}>
+              Project Assignment Guide
+            </h3>
+            <p style={{ color: '#475569', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1rem' }}>
+              As a **Manager** or **HR** administrator, you can easily control which employees can view and log hours for specific projects:
+            </p>
+            <ul style={{ color: '#475569', fontSize: '0.9rem', lineHeight: 1.6, paddingLeft: '1.25rem', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <li><strong>Dynamic Filtering:</strong> Employees will only see projects that are explicitly assigned to them in their Log Time project dropdown.</li>
+              <li><strong>Pre-Populated Jobs:</strong> When an employee selects a project, the job name is auto-completed automatically, accelerating their daily timesheet flow.</li>
+              <li><strong>Real-Time Allocation:</strong> Deleting a project instantly revokes log access for all users assigned to it.</li>
+            </ul>
+            <div style={{ background: '#fef3c7', padding: '1rem', borderRadius: '12px', borderLeft: '4px solid #f59e0b', fontSize: '0.82rem', fontWeight: 600, color: '#b45309' }}>
+              ⚠️ Note: Timesheets that were already submitted or approved for deleted projects will remain safely stored for auditing and report history.
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* ── Add Project Modal ────────────────────────────────────── */}
+      {showProjectModal && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(15, 23, 42, 0.5)', backdropFilter: 'blur(8px)',
+          zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
+        }}>
+          <div className="animate-fade" style={{
+            background: 'white', borderRadius: '24px', padding: '2.5rem',
+            width: '100%', maxWidth: '520px', boxShadow: '0 25px 50px rgba(0,0,0,0.15)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+              <div>
+                <h2 style={{ fontWeight: 800, fontSize: '1.5rem', color: '#0f172a' }}>Create New Project</h2>
+                <p style={{ color: '#64748b', fontSize: '0.875rem', marginTop: '0.25rem' }}>Define a project, job, and assign access rights to team members.</p>
+              </div>
+              <button onClick={() => setShowProjectModal(false)} style={{ background: '#f1f5f9', border: 'none', borderRadius: '10px', width: '36px', height: '36px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={18} color="#64748b" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateProject}>
+              {/* Project Name */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', color: '#475569', marginBottom: '0.5rem' }}>
+                  Project Name <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. Acme Redesign"
+                  value={newProject.name}
+                  onChange={e => setNewProject({ ...newProject, name: e.target.value })}
+                  style={{ width: '100%', padding: '0.85rem 1rem', border: '1.5px solid #e2e8f0', borderRadius: '12px', outline: 'none', background: 'white' }}
+                  required 
+                />
+              </div>
+
+              {/* Job Name */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', color: '#475569', marginBottom: '0.5rem' }}>
+                  Job Name / Component <span style={{ color: '#ef4444' }}>*</span>
+                </label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. Development"
+                  value={newProject.jobName}
+                  onChange={e => setNewProject({ ...newProject, jobName: e.target.value })}
+                  style={{ width: '100%', padding: '0.85rem 1rem', border: '1.5px solid #e2e8f0', borderRadius: '12px', outline: 'none', background: 'white' }}
+                  required 
+                />
+              </div>
+
+              {/* Select Employees Checkbox List */}
+              <div style={{ marginBottom: '2rem' }}>
+                <label style={{ display: 'block', fontWeight: 700, fontSize: '0.85rem', color: '#475569', marginBottom: '0.5rem' }}>
+                  Assign Team Members
+                </label>
+                <div style={{ 
+                  maxHeight: '160px', overflowY: 'auto', border: '1.5px solid #e2e8f0', 
+                  borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', background: '#f8fafc' 
+                }}>
+                  {employees.length === 0 ? (
+                    <span style={{ fontSize: '0.85rem', color: '#94a3b8', textAlign: 'center' }}>No employees found to assign.</span>
+                  ) : (
+                    employees.map(emp => {
+                      const isChecked = newProject.assignedEmployeeIds.includes(emp.id);
+                      return (
+                        <label key={emp.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontSize: '0.88rem', fontWeight: 600, color: '#334155' }}>
+                          <input 
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {
+                              const updatedIds = isChecked 
+                                ? newProject.assignedEmployeeIds.filter(id => id !== emp.id)
+                                : [...newProject.assignedEmployeeIds, emp.id];
+                              setNewProject({ ...newProject, assignedEmployeeIds: updatedIds });
+                            }}
+                            style={{ width: '16px', height: '16px', accentColor: 'var(--primary)' }}
+                          />
+                          {emp.name} ({emp.role})
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button
+                  type="submit"
+                  disabled={submittingProject}
+                  className="btn btn-primary"
+                  style={{ flex: 2, justifyContent: 'center', borderRadius: '14px', padding: '1rem', fontWeight: 700 }}
+                >
+                  {submittingProject ? 'Creating...' : 'Create Project'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowProjectModal(false)}
+                  style={{ flex: 1, padding: '1rem', borderRadius: '14px', border: 'none', background: '#f1f5f9', color: '#475569', fontWeight: 700, cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ── Add Log Modal ─────────────────────────────────────────── */}
       {showModal && (() => {
@@ -411,13 +730,25 @@ const Timesheets = () => {
                     <select
                       style={inputStyle}
                       value={newLog.projectName}
-                      onChange={e => setNewLog({ ...newLog, projectName: e.target.value })}
+                      onChange={e => {
+                        const val = e.target.value;
+                        const proj = projects.find(p => p.name === val);
+                        setNewLog({
+                          ...newLog,
+                          projectName: val,
+                          jobName: proj ? (proj.jobName || '') : ''
+                        });
+                      }}
+                      required
                     >
                       <option value="">Select</option>
-                      <option value="General">General</option>
-                      <option value="Internal">Internal</option>
-                      <option value="Client Project">Client Project</option>
-                      <option value="R&D">R&D</option>
+                      {projects.length === 0 ? (
+                        <option value="" disabled>No projects assigned. Contact Manager/HR.</option>
+                      ) : (
+                        projects.map(p => (
+                          <option key={p.id} value={p.name}>{p.name}</option>
+                        ))
+                      )}
                     </select>
                   </div>
 
@@ -426,19 +757,14 @@ const Timesheets = () => {
                     <label style={labelStyle}>
                       Job Name <span style={{ color: '#ef4444' }}>*</span>
                     </label>
-                    <select
+                    <input
+                      type="text"
                       style={inputStyle}
                       value={newLog.jobName}
                       onChange={e => setNewLog({ ...newLog, jobName: e.target.value })}
-                    >
-                      <option value="">Select</option>
-                      <option value="Development">Development</option>
-                      <option value="Design">Design</option>
-                      <option value="Testing">Testing</option>
-                      <option value="Meetings">Meetings</option>
-                      <option value="Support">Support</option>
-                      <option value="Documentation">Documentation</option>
-                    </select>
+                      placeholder="e.g. Development (Auto-filled by project)"
+                      required
+                    />
                   </div>
 
                   {/* Work Item */}

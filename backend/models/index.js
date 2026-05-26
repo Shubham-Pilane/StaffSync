@@ -87,9 +87,35 @@ const StatusLog = sequelize.define('StatusLog', {
   durationMs: { type: DataTypes.INTEGER, defaultValue: 0 }
 });
 
+const Holiday = sequelize.define('Holiday', {
+  name: { type: DataTypes.STRING, allowNull: false },
+  date: { type: DataTypes.DATEONLY, allowNull: false },
+  companyId: { type: DataTypes.INTEGER, allowNull: true }
+});
+
+const Project = sequelize.define('Project', {
+  name: { type: DataTypes.STRING, allowNull: false },
+  jobName: { type: DataTypes.STRING },
+  companyId: { type: DataTypes.INTEGER, allowNull: true },
+  managerId: { type: DataTypes.INTEGER, allowNull: true }
+});
+
+const ProjectAssignment = sequelize.define('ProjectAssignment', {});
+
 // Associations
 Company.hasMany(User, { foreignKey: 'companyId' });
 User.belongsTo(Company, { foreignKey: 'companyId' });
+
+Company.hasMany(Holiday, { foreignKey: 'companyId' });
+Holiday.belongsTo(Company, { foreignKey: 'companyId' });
+
+Company.hasMany(Project, { foreignKey: 'companyId' });
+Project.belongsTo(Company, { foreignKey: 'companyId' });
+
+Project.belongsTo(User, { as: 'Manager', foreignKey: 'managerId' });
+
+Project.belongsToMany(User, { through: ProjectAssignment, as: 'Employees', foreignKey: 'projectId' });
+User.belongsToMany(Project, { through: ProjectAssignment, as: 'Projects', foreignKey: 'userId' });
 
 User.hasMany(StatusLog, { foreignKey: 'userId' });
 StatusLog.belongsTo(User, { foreignKey: 'userId' });
@@ -110,4 +136,4 @@ Timesheet.belongsTo(User, { foreignKey: 'userId' });
 User.hasMany(Timesheet, { as: 'ManagedTimesheets', foreignKey: 'managerId' });
 Timesheet.belongsTo(User, { as: 'Approver', foreignKey: 'managerId' });
 
-module.exports = { sequelize, Company, User, Attendance, Leave, Timesheet, StatusLog };
+module.exports = { sequelize, Company, User, Attendance, Leave, Timesheet, StatusLog, Holiday, Project, ProjectAssignment };

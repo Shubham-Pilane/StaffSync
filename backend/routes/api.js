@@ -49,7 +49,18 @@ router.post('/leaves', auth, workflowController.applyLeave);
 router.get('/leaves/my', auth, workflowController.getMyLeaves);
 router.get('/leaves/pending', auth, checkRole(['Manager', 'HR']), workflowController.getPendingLeaves);
 router.patch('/leaves/:id', auth, checkRole(['Manager', 'HR']), workflowController.updateLeaveStatus);
-router.put('/companies/:id/status', auth, checkRole(['SuperAdmin']), companyController.updateCompanyStatus);
+router.post('/leaves/hr', auth, checkRole(['HR']), workflowController.createHrLeave);
+router.get('/leaves/calendar', auth, workflowController.getCalendarLeaves);
+
+// Holiday Routes
+router.get('/holidays', auth, workflowController.getHolidays);
+router.post('/holidays', auth, checkRole(['HR']), workflowController.createHoliday);
+router.delete('/holidays/:id', auth, checkRole(['HR']), workflowController.deleteHoliday);
+
+// Project Routes
+router.get('/projects', auth, workflowController.getProjects);
+router.post('/projects', auth, checkRole(['HR', 'Manager']), workflowController.createProject);
+router.delete('/projects/:id', auth, checkRole(['HR', 'Manager']), workflowController.deleteProject);
 
 // Timesheet Routes
 router.post('/timesheets', auth, workflowController.submitTimesheet);
