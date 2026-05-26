@@ -1,4 +1,4 @@
-const { User, Company, Leave, StatusLog } = require('../models');
+const { User, Company, Leave, StatusLog, Attendance, Timesheet } = require('../models');
 const { Op } = require('sequelize');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -219,7 +219,24 @@ exports.deleteEmployee = async (req, res) => {
       return res.status(404).json({ error: 'Employee not found' });
     }
 
+    // Handle database dependencies and foreign key constraints before deleting the user:
+    
+    // 1. If this employee is a manager, clear their reference from any subordinates
+    await User.update({ managerId: null }, { where: { managerId: id } });
+
+    // 2. Clear or nullify manager reference in managed workflows (Leaves and Timesheets)
+    await Leave.update({ managerId: null }, { where: { managerId: id } });
+    await Timesheet.update({ managerId: null }, { where: { managerId: id } });
+
+    // 3. Delete all subordinate/owned records belonging to this employee
+    await Attendance.destroy({ where: { userId: id } });
+    await Leave.destroy({ where: { userId: id } });
+    await Timesheet.destroy({ where: { userId: id } });
+    await StatusLog.destroy({ where: { userId: id } });
+
+    // 4. Finally, destroy the employee record itself
     await employee.destroy();
+
     res.json({ success: true, message: 'Employee deleted successfully' });
   } catch (error) {
     res.status(500).json({ error: error.message });

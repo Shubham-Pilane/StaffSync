@@ -10,6 +10,9 @@ const Employees = () => {
   const [managers, setManagers] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingEmp, setDeletingEmp] = useState({ id: null, name: '' });
+  const [loadingDelete, setLoadingDelete] = useState(false);
   const [newEmp, setNewEmp] = useState({ name: '', email: '', role: 'Employee', department: '', managerId: null, password: '' });
   const [editingEmp, setEditingEmp] = useState({ id: null, name: '', email: '', role: 'Employee', department: '', managerId: null, password: '' });
   const [notification, setNotification] = useState(null);
@@ -75,16 +78,18 @@ const Employees = () => {
     }
   };
 
-  const handleDeleteEmployee = async (id, name) => {
-    if (window.confirm(`Are you absolutely sure you want to delete ${name}? This action cannot be undone.`)) {
-      try {
-        await api.delete(`/employees/${id}`);
-        fetchEmployees();
-        fetchManagers();
-        setNotification({ message: 'Employee deleted successfully!', type: 'success' });
-      } catch (err) {
-        setNotification({ message: err.response?.data?.error || 'Failed to delete employee', type: 'error' });
-      }
+  const handleDeleteEmployee = async () => {
+    setLoadingDelete(true);
+    try {
+      await api.delete(`/employees/${deletingEmp.id}`);
+      setShowDeleteModal(false);
+      fetchEmployees();
+      fetchManagers();
+      setNotification({ message: 'Employee deleted successfully!', type: 'success' });
+    } catch (err) {
+      setNotification({ message: err.response?.data?.error || 'Failed to delete employee', type: 'error' });
+    } finally {
+      setLoadingDelete(false);
     }
   };
 
@@ -170,7 +175,7 @@ const Employees = () => {
                           <Edit size={16} />
                         </button>
                         <button 
-                          onClick={() => handleDeleteEmployee(emp.id, emp.name)} 
+                          onClick={() => { setDeletingEmp({ id: emp.id, name: emp.name }); setShowDeleteModal(true); }} 
                           className="btn btn-ghost" 
                           style={{ padding: '0.4rem', border: '1px solid var(--border)', color: 'var(--error)', borderRadius: '8px' }}
                           title="Delete Employee"
@@ -358,6 +363,64 @@ const Employees = () => {
                 <button type="button" onClick={() => setShowEditModal(false)} className="btn btn-ghost" style={{ flex: 1, justifyContent: 'center', borderRadius: '14px', background: '#f1f5f9', color: '#475569' }}>Cancel</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showDeleteModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '2rem', overflowY: 'auto'
+        }}>
+          <div className="modal-solid animate-fade" style={{ 
+            width: '100%', 
+            maxWidth: '480px',
+            background: 'white',
+            borderRadius: '24px',
+            padding: '2.5rem',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              width: '64px', height: '64px', borderRadius: '50%', background: '#fee2e2', color: '#ef4444',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem'
+            }}>
+              <Trash size={32} />
+            </div>
+            
+            <h2 style={{ fontWeight: 800, fontSize: '1.5rem', marginBottom: '0.75rem', color: '#1e293b' }}>
+              Delete Employee
+            </h2>
+            <p style={{ color: '#64748b', marginBottom: '2rem', fontWeight: 500, lineHeight: 1.6 }}>
+              Are you absolutely sure you want to permanently delete <strong>{deletingEmp.name}</strong> from the system?<br/>
+              <span style={{ fontSize: '0.85rem', color: '#ef4444', fontWeight: 600 }}>This will also purge all their attendance logs, leaves, and timesheets. This action cannot be undone.</span>
+            </p>
+
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button 
+                type="button" 
+                onClick={() => setShowDeleteModal(false)} 
+                className="btn btn-ghost" 
+                style={{ flex: 1, justifyContent: 'center', borderRadius: '14px', background: '#f1f5f9', color: '#475569', padding: '0.85rem' }}
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                onClick={handleDeleteEmployee} 
+                disabled={loadingDelete}
+                className="btn" 
+                style={{ 
+                  flex: 1.5, justifyContent: 'center', borderRadius: '14px', 
+                  background: '#ef4444', color: 'white', border: 'none', padding: '0.85rem', fontWeight: 600,
+                  display: 'flex', alignItems: 'center', gap: '0.5rem'
+                }}
+              >
+                {loadingDelete ? 'Deleting...' : 'Yes, Delete Employee'}
+              </button>
+            </div>
           </div>
         </div>
       )}
